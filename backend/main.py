@@ -10,12 +10,17 @@ from routers.generate import router
 
 app = FastAPI(title="Columbus AI 書類ジェネレーター API")
 
-origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",")]
+_raw = os.environ.get("CORS_ORIGINS", "*")
+origins = [o.strip() for o in _raw.split(",")]
+
+# Vercel preview deployments use per-commit URLs; allow all *.vercel.app subdomains
+origin_regex = r"https://.*\.vercel\.app" if "*" not in origins else None
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_origin_regex=origin_regex,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
