@@ -16,6 +16,8 @@ def _find_fonts() -> tuple[str, str]:
     """OS問わず日本語フォントを見つける。見つからない場合はNoneを返す。"""
     candidates = {
         "regular": [
+            # Render.com bundled fonts (downloaded at build time)
+            str(Path(__file__).parent.parent / "fonts" / "NotoSansJP-Regular.ttf"),
             # Windows
             r"C:\Windows\Fonts\msgothic.ttc",
             r"C:\Windows\Fonts\YuGothR.ttc",
@@ -26,6 +28,8 @@ def _find_fonts() -> tuple[str, str]:
             "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
         ],
         "bold": [
+            # Render.com bundled fonts (downloaded at build time)
+            str(Path(__file__).parent.parent / "fonts" / "NotoSansJP-Bold.ttf"),
             # Windows
             r"C:\Windows\Fonts\meiryob.ttc",
             r"C:\Windows\Fonts\YuGothB.ttc",
@@ -48,7 +52,7 @@ _USE_CJK = FONT_REGULAR is not None
 
 def _cell(pdf: FPDF, w: float, h: float, txt: str) -> None:
     pdf.set_x(L_MARGIN)
-    pdf.multi_cell(w, h, txt, new_x=XPos.LEFT, new_y=YPos.NEXT)
+    pdf.multi_cell(w, h, txt or " ", new_x=XPos.LEFT, new_y=YPos.NEXT)
     pdf.set_x(L_MARGIN)
 
 
@@ -179,12 +183,20 @@ def generate_pdf(html_content: str) -> bytes:
             except Exception:
                 pass
 
-    pdf.set_left_margin(L_MARGIN)
-    pdf.set_x(L_MARGIN)
-    pdf.set_y(-15)
-    pdf.set_font(font_r, size=8)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(PAGE_W, 10, "Columbus AI 書類ジェネレーター", align="R",
-             new_x=XPos.RIGHT, new_y=YPos.TOP)
+    try:
+        pdf.set_y(-15)
+        pdf.set_font(font_r, size=8)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(PAGE_W, 10, "Columbus AI 書類ジェネレーター", align="R",
+                 new_x=XPos.RIGHT, new_y=YPos.TOP)
+    except Exception:
+        try:
+            pdf.set_y(-15)
+            pdf.set_font("Helvetica", size=8)
+            pdf.set_text_color(150, 150, 150)
+            pdf.cell(PAGE_W, 10, "Columbus AI Doc Generator", align="R",
+                     new_x=XPos.RIGHT, new_y=YPos.TOP)
+        except Exception:
+            pass
 
     return bytes(pdf.output())
