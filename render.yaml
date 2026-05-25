@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: columbus-doc-generator-api
+    runtime: python
+    rootDir: backend
+    buildCommand: apt-get install -y fonts-noto-cjk || true && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+    healthCheckPath: /health

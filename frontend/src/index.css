@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0d1530;
+  color: #e8eaf0;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+.prose-doc h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4a9eff;
+  border-bottom: 2px solid #4a9eff;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.prose-doc h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #a8c8ff;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.prose-doc p {
+  margin-bottom: 8px;
+  line-height: 1.8;
+}
+
+.prose-doc ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+
+.prose-doc li {
+  margin-bottom: 4px;
+  line-height: 1.7;
+}
+
+.prose-doc strong {
+  color: #a8c8ff;
+}
