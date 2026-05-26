@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function StepQuestion({ stepIndex, question, options, selected, onSelect, onNext, onBack }) {
+export default function StepQuestion({ stepIndex, totalSteps, question, options, selected, onSelect, onNext, onBack }) {
   const canProceed = selected !== null && selected !== undefined && selected !== ''
 
   return (
@@ -8,7 +8,7 @@ export default function StepQuestion({ stepIndex, question, options, selected, o
       {/* 質問ヘッダー */}
       <div>
         <span className="text-xs font-semibold text-accent uppercase tracking-wider">
-          質問 {stepIndex} / 3
+          質問 {stepIndex} / {totalSteps}
         </span>
         <h3 className="mt-2 text-lg font-bold text-white leading-snug">{question}</h3>
       </div>

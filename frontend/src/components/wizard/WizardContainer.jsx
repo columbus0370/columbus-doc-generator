@@ -3,9 +3,9 @@ import { WIZARD_STEPS, buildContent } from '../../config/wizardConfig'
 import WizardProgress from './WizardProgress'
 import StepBasicInfo from './StepBasicInfo'
 import StepQuestion from './StepQuestion'
+import StepLineItems from './StepLineItems'
+import StepTextInput from './StepTextInput'
 import StepConfirm from './StepConfirm'
-
-const TOTAL_STEPS = 5 // Step0 + Step1,2,3 + Step4
 
 const initialBasicInfo = {
   doc_type: 'estimate',
@@ -17,78 +17,57 @@ const initialBasicInfo = {
 export default function WizardContainer({ onGenerate, loading, error }) {
   const [currentStep, setCurrentStep] = React.useState(0)
   const [basicInfo, setBasicInfo] = React.useState(initialBasicInfo)
-  // answers[0] = Step1 の選択, answers[1] = Step2, answers[2] = Step3
-  const [answers, setAnswers] = React.useState(['', '', ''])
 
-  // 書類種別が変わったら回答をリセット
+  const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
+  // Step0 = 基本情報, Steps 1..N = questions, Step N+1 = 確認
+  const totalSteps = steps.length + 2
+
+  const [answers, setAnswers] = React.useState(() => new Array(steps.length).fill(null))
+
   const handleBasicChange = (field, value) => {
     setBasicInfo((prev) => ({ ...prev, [field]: value }))
     if (field === 'doc_type') {
-      setAnswers(['', '', ''])
+      const newSteps = WIZARD_STEPS[value] ?? []
+      setAnswers(new Array(newSteps.length).fill(null))
+      setCurrentStep(0)
     }
   }
 
-  const handleAnswerSelect = (stepIndex, value) => {
+  const handleAnswerChange = (stepIdx, value) => {
     setAnswers((prev) => {
       const next = [...prev]
-      next[stepIndex] = value
+      next[stepIdx] = value
       return next
     })
   }
 
-  const goNext = () => setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1))
+  const goNext = () => setCurrentStep((s) => Math.min(s + 1, totalSteps - 1))
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 0))
 
   const handleSubmit = () => {
     const content = buildContent(basicInfo.doc_type, answers)
-    const payload = {
+    onGenerate({
       doc_type: basicInfo.doc_type,
       client_name: basicInfo.client_name,
       company_name: basicInfo.company_name,
       content,
       amount: basicInfo.amount,
       notes: '',
-    }
-    onGenerate(payload)
+    })
   }
 
-  const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
-
   const renderStep = () => {
-    // Step0: 基本情報
     if (currentStep === 0) {
-      return (
-        <StepBasicInfo
-          data={basicInfo}
-          onChange={handleBasicChange}
-          onNext={goNext}
-        />
-      )
+      return <StepBasicInfo data={basicInfo} onChange={handleBasicChange} onNext={goNext} />
     }
 
-    // Step1〜3: 書類固有の質問
-    if (currentStep >= 1 && currentStep <= 3) {
-      const stepDef = steps[currentStep - 1]
-      if (!stepDef) return null
-      return (
-        <StepQuestion
-          stepIndex={currentStep}
-          question={stepDef.question}
-          options={stepDef.options}
-          selected={answers[currentStep - 1]}
-          onSelect={(val) => handleAnswerSelect(currentStep - 1, val)}
-          onNext={goNext}
-          onBack={goBack}
-        />
-      )
-    }
-
-    // Step4: 確認
-    if (currentStep === 4) {
+    const confirmStepIndex = totalSteps - 1
+    if (currentStep === confirmStepIndex) {
       return (
         <StepConfirm
           basicInfo={basicInfo}
           answers={answers}
+          steps={steps}
           onSubmit={handleSubmit}
           onBack={goBack}
           loading={loading}
@@ -97,12 +76,59 @@ export default function WizardContainer({ onGenerate, loading, error }) {
       )
     }
 
-    return null
+    const stepIdx = currentStep - 1
+    const stepDef = steps[stepIdx]
+    if (!stepDef) return null
+
+    const questionCount = steps.length
+
+    if (stepDef.type === 'line_items') {
+      return (
+        <StepLineItems
+          question={stepDef.question}
+          value={answers[stepIdx]}
+          onChange={(val) => handleAnswerChange(stepIdx, val)}
+          onNext={goNext}
+          onBack={goBack}
+          stepIndex={currentStep}
+          totalSteps={questionCount}
+        />
+      )
+    }
+
+    if (stepDef.type === 'text') {
+      return (
+        <StepTextInput
+          question={stepDef.question}
+          placeholder={stepDef.placeholder}
+          value={answers[stepIdx]}
+          onChange={(val) => handleAnswerChange(stepIdx, val)}
+          onNext={goNext}
+          onBack={goBack}
+          stepIndex={currentStep}
+          totalSteps={questionCount}
+        />
+      )
+    }
+
+    // default: select
+    return (
+      <StepQuestion
+        stepIndex={currentStep}
+        totalSteps={questionCount}
+        question={stepDef.question}
+        options={stepDef.options}
+        selected={answers[stepIdx]}
+        onSelect={(val) => handleAnswerChange(stepIdx, val)}
+        onNext={goNext}
+        onBack={goBack}
+      />
+    )
   }
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <WizardProgress currentStep={currentStep} />
+      <WizardProgress currentStep={currentStep} totalSteps={totalSteps} />
       <div className="bg-navy-800 rounded-2xl p-6 sm:p-8 border border-navy-700 transition-all duration-300">
         {renderStep()}
       </div>

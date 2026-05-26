@@ -1,20 +1,50 @@
 import React from 'react'
-import { DOC_TYPES, WIZARD_STEPS } from '../../config/wizardConfig'
+import { DOC_TYPES } from '../../config/wizardConfig'
 
-export default function StepConfirm({ basicInfo, answers, onSubmit, onBack, loading, error }) {
+function formatAnswer(step, answer) {
+  if (answer === null || answer === undefined || answer === '') return '—'
+
+  if (step.type === 'line_items') {
+    if (answer === '未定') return '未定（AIが自動補完）'
+    if (Array.isArray(answer)) {
+      const valid = answer.filter((r) => r.name.trim())
+      if (valid.length === 0) return '—'
+      return valid
+        .map((r) => {
+          const price = r.price ? `¥${Number(r.price).toLocaleString()}` : ''
+          return `${r.name}${r.desc ? `（${r.desc}）` : ''} × ${r.qty}${r.unit}${price ? ` = ${price}` : ''}`
+        })
+        .join('\n')
+    }
+    return '—'
+  }
+
+  return answer || '—'
+}
+
+export default function StepConfirm({ basicInfo, answers, steps, onSubmit, onBack, loading, error }) {
   const docTypeLabel = DOC_TYPES.find((t) => t.value === basicInfo.doc_type)?.label ?? basicInfo.doc_type
-  const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
 
-  const rows = [
-    { label: '書類種別', value: docTypeLabel },
-    { label: '顧客名', value: basicInfo.client_name || '—' },
-    { label: '自社名・担当者名', value: basicInfo.company_name || '—' },
-    { label: '金額', value: basicInfo.amount ? (isNaN(Number(basicInfo.amount)) ? `${basicInfo.amount} 円` : `${Number(basicInfo.amount).toLocaleString()} 円`) : '—' },
-    ...steps.map((step, i) => ({
-      label: `Q${i + 1}: ${step.question}`,
-      value: answers[i] || '—',
-    })),
+  const amountDisplay = basicInfo.amount
+    ? isNaN(Number(basicInfo.amount))
+      ? `${basicInfo.amount} 円`
+      : `¥${Number(basicInfo.amount).toLocaleString()}`
+    : '—'
+
+  const basicRows = [
+    { label: '書類種別', value: docTypeLabel, multiline: false },
+    { label: '顧客名', value: basicInfo.client_name || '—', multiline: false },
+    { label: '自社名・担当者名', value: basicInfo.company_name || '—', multiline: false },
+    { label: '金額', value: amountDisplay, multiline: false },
   ]
+
+  const questionRows = steps.map((step, i) => ({
+    label: step.question,
+    value: formatAnswer(step, answers[i]),
+    multiline: step.type === 'line_items' || step.type === 'text',
+  }))
+
+  const rows = [...basicRows, ...questionRows]
 
   return (
     <div className="space-y-6">
@@ -23,31 +53,30 @@ export default function StepConfirm({ basicInfo, answers, onSubmit, onBack, load
         <p className="text-sm text-gray-400 mt-1">以下の内容で書類を生成します。問題なければ「生成する」を押してください。</p>
       </div>
 
-      {/* サマリーテーブル */}
       <div className="rounded-xl border border-navy-700 overflow-hidden">
         {rows.map((row, i) => (
           <div
             key={i}
-            className={`flex flex-col sm:flex-row sm:items-start px-4 py-3 gap-1 sm:gap-4 ${
-              i % 2 === 0 ? 'bg-navy-900/60' : 'bg-navy-900/30'
-            }`}
+            className={`flex flex-col px-4 py-3 gap-1 ${i % 2 === 0 ? 'bg-navy-900/60' : 'bg-navy-900/30'}`}
           >
-            <span className="text-xs text-gray-500 sm:w-52 sm:flex-shrink-0 pt-0.5 leading-relaxed">
-              {row.label}
-            </span>
-            <span className="text-sm text-white font-medium leading-relaxed">{row.value}</span>
+            <span className="text-xs text-gray-500 leading-relaxed">{row.label}</span>
+            {row.multiline ? (
+              <span className="text-sm text-white font-medium leading-relaxed whitespace-pre-line">
+                {row.value}
+              </span>
+            ) : (
+              <span className="text-sm text-white font-medium leading-relaxed">{row.value}</span>
+            )}
           </div>
         ))}
       </div>
 
-      {/* エラー */}
       {error && (
         <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm">
           {error}
         </div>
       )}
 
-      {/* ナビゲーション */}
       <div className="flex justify-between pt-2">
         <button
           type="button"

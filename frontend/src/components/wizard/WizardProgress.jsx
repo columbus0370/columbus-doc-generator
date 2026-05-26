@@ -1,30 +1,38 @@
 import React from 'react'
 
-// totalSteps = 5 (Step0 基本情報, Step1〜3 質問, Step4 確認)
-const STEP_LABELS = ['基本情報', '質問1', '質問2', '質問3', '確認']
+export default function WizardProgress({ currentStep, totalSteps }) {
+  const labels = [
+    '基本情報',
+    ...Array.from({ length: totalSteps - 2 }, (_, i) => `Q${i + 1}`),
+    '確認',
+  ]
 
-export default function WizardProgress({ currentStep }) {
-  const totalSteps = STEP_LABELS.length
+  // Use smaller circles when many steps to avoid overcrowding
+  const circleClass = totalSteps > 6
+    ? 'w-6 h-6 text-xs'
+    : 'w-8 h-8 text-sm'
 
   return (
     <div className="w-full mb-8">
-      {/* ステップインジケーター */}
       <div className="flex items-center justify-between relative">
-        {/* 背景の連結ライン */}
-        <div className="absolute top-4 left-0 right-0 h-0.5 bg-navy-700 z-0" />
-        {/* 進捗ライン */}
+        {/* Background line */}
+        <div className="absolute top-3 left-0 right-0 h-0.5 bg-navy-700 z-0" style={totalSteps > 6 ? {} : { top: '1rem' }} />
+        {/* Progress line */}
         <div
-          className="absolute top-4 left-0 h-0.5 bg-accent z-0 transition-all duration-500"
-          style={{ width: `${(currentStep / (totalSteps - 1)) * 100}%` }}
+          className="absolute h-0.5 bg-accent z-0 transition-all duration-500"
+          style={{
+            top: totalSteps > 6 ? '0.75rem' : '1rem',
+            width: `${(currentStep / (totalSteps - 1)) * 100}%`,
+          }}
         />
 
-        {STEP_LABELS.map((label, index) => {
+        {labels.map((label, index) => {
           const isDone = index < currentStep
           const isActive = index === currentStep
           return (
             <div key={label} className="flex flex-col items-center z-10">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${
+                className={`${circleClass} rounded-full flex items-center justify-center font-bold border-2 transition-all duration-300 ${
                   isDone
                     ? 'bg-accent border-accent text-white'
                     : isActive
@@ -33,7 +41,7 @@ export default function WizardProgress({ currentStep }) {
                 }`}
               >
                 {isDone ? (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 ) : (
