@@ -1,13 +1,10 @@
 import React from 'react'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+
+function wrapInShell(content) {
+  return `<!doctype html><html><head><meta charset="utf-8"></head><body>${content}</body></html>`
+}
 
 export default function PreviewPanel({ title, text }) {
-  const html = React.useMemo(() => {
-    if (!text) return ''
-    return DOMPurify.sanitize(marked.parse(text))
-  }, [text])
-
   if (!text) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -19,15 +16,21 @@ export default function PreviewPanel({ title, text }) {
     )
   }
 
+  const isFullHtml = /^(﻿)?\s*<!doctype|^(﻿)?\s*<html/i.test(text)
+  const srcDoc = isFullHtml ? text : wrapInShell(text)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-accent">{title}</h3>
         <span className="text-xs text-gray-400 bg-navy-700 px-2 py-1 rounded">プレビュー</span>
       </div>
-      <div
-        className="prose-doc bg-navy-800 rounded-lg p-6 border border-navy-700"
-        dangerouslySetInnerHTML={{ __html: html }}
+      <iframe
+        srcDoc={srcDoc}
+        title={title}
+        className="w-full rounded-lg border border-navy-700"
+        style={{ height: 'calc(100vh - 320px)', minHeight: '600px', background: '#fff' }}
+        sandbox="allow-scripts"
       />
     </div>
   )

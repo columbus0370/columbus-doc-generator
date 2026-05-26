@@ -80,7 +80,9 @@ def _parse_markdown(text: str) -> list[dict]:
 
 
 def _html_to_text(html: str) -> str:
-    text = re.sub(r"<br\s*/?>", "\n", html)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", "\n", text)
     text = re.sub(r"<li[^>]*>", "- ", text)
     text = re.sub(r"</li>", "\n", text)
     text = re.sub(r"<[uo]l[^>]*>|</[uo]l>", "\n", text)
