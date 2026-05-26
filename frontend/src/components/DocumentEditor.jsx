@@ -128,7 +128,7 @@ export default function DocumentEditor({ htmlString, title, onHtmlChange }) {
           onLoad={handleEditLoad}
           className="w-full rounded-lg border border-navy-700"
           style={{ height: 'calc(100vh - 400px)', minHeight: '500px', background: '#fff' }}
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-same-origin"
         />
       </div>
     )

@@ -2,22 +2,25 @@ import React from 'react'
 
 export default function DownloadButton({ text, title }) {
   const handlePrintPdf = () => {
-    const win = window.open('', '_blank', 'noopener,noreferrer')
-    if (!win) {
-      alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。')
-      return
+    // Use a hidden iframe to avoid popup blocker
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0'
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      if (document.body.contains(iframe)) document.body.removeChild(iframe)
     }
-    // Set onload before writing to avoid missing the event when it fires synchronously
-    win.onload = () => {
-      win.focus()
-      win.print()
-    }
-    win.document.write(text)
-    win.document.close()
-    // Fallback: if load already fired before the listener was attached, trigger print via setTimeout
-    if (win.document.readyState === 'complete') {
-      win.focus()
-      win.print()
+
+    try {
+      iframe.contentDocument.open()
+      iframe.contentDocument.write(text)
+      iframe.contentDocument.close()
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+      // Remove after a delay to let the print dialog open
+      setTimeout(cleanup, 2000)
+    } catch {
+      cleanup()
     }
   }
 
