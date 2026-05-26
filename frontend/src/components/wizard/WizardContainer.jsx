@@ -1,5 +1,6 @@
 import React from 'react'
 import { WIZARD_STEPS, buildContent } from '../../config/wizardConfig'
+import { formatProfileForPrompt } from '../../hooks/useBusinessProfile'
 import WizardProgress from './WizardProgress'
 import StepBasicInfo from './StepBasicInfo'
 import StepQuestion from './StepQuestion'
@@ -7,16 +8,16 @@ import StepLineItems from './StepLineItems'
 import StepTextInput from './StepTextInput'
 import StepConfirm from './StepConfirm'
 
-const initialBasicInfo = {
+const makeInitialBasicInfo = (profile) => ({
   doc_type: 'estimate',
   client_name: '',
-  company_name: '',
+  company_name: profile?.business_name ?? '',
   amount: '',
-}
+})
 
-export default function WizardContainer({ onGenerate, loading, error }) {
+export default function WizardContainer({ onGenerate, loading, error, profile }) {
   const [currentStep, setCurrentStep] = React.useState(0)
-  const [basicInfo, setBasicInfo] = React.useState(initialBasicInfo)
+  const [basicInfo, setBasicInfo] = React.useState(() => makeInitialBasicInfo(profile))
 
   const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
   // Step0 = 基本情報, Steps 1..N = questions, Step N+1 = 確認
@@ -46,10 +47,15 @@ export default function WizardContainer({ onGenerate, loading, error }) {
 
   const handleSubmit = () => {
     const content = buildContent(basicInfo.doc_type, answers)
+    // Use full profile (name + address + tel + email) if available, otherwise wizard input
+    const companyName =
+      profile?.business_name && basicInfo.company_name === profile.business_name
+        ? formatProfileForPrompt(profile)
+        : basicInfo.company_name
     onGenerate({
       doc_type: basicInfo.doc_type,
       client_name: basicInfo.client_name,
-      company_name: basicInfo.company_name,
+      company_name: companyName,
       content,
       amount: basicInfo.amount,
       notes: '',
@@ -58,7 +64,7 @@ export default function WizardContainer({ onGenerate, loading, error }) {
 
   const renderStep = () => {
     if (currentStep === 0) {
-      return <StepBasicInfo data={basicInfo} onChange={handleBasicChange} onNext={goNext} />
+      return <StepBasicInfo data={basicInfo} onChange={handleBasicChange} onNext={goNext} profile={profile} />
     }
 
     const confirmStepIndex = totalSteps - 1

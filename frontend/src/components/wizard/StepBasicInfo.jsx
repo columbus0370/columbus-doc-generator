@@ -28,7 +28,7 @@ const DOC_TYPE_DESCS = {
   report: '業務進捗や成果を報告・まとめ',
 }
 
-export default function StepBasicInfo({ data, onChange, onNext }) {
+export default function StepBasicInfo({ data, onChange, onNext, profile }) {
   const inputClass =
     'w-full bg-navy-900 border border-navy-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors'
   const labelClass = 'block text-sm font-medium text-gray-300 mb-1.5'
@@ -88,12 +88,20 @@ export default function StepBasicInfo({ data, onChange, onNext }) {
           />
         </div>
         <div>
-          <label className={labelClass}>自社名・担当者名</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-gray-300">自社名・担当者名</label>
+            {profile?.business_name && data.company_name === profile.business_name && (
+              <span className="text-xs text-green-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                事業者情報から入力済み
+              </span>
+            )}
+          </div>
           <input
             type="text"
             value={data.company_name}
             onChange={(e) => onChange('company_name', e.target.value)}
-            placeholder="山田 太郎"
+            placeholder="例: 株式会社テック / 山田 太郎"
             className={inputClass}
           />
         </div>
