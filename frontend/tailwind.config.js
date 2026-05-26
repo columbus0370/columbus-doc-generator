@@ -8,6 +8,7 @@ export default {
           900: '#0d1530',
           800: '#111d3c',
           700: '#162248',
+          600: '#1e2f5e',
         },
         accent: {
           DEFAULT: '#4a9eff',
