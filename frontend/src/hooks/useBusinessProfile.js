@@ -9,6 +9,7 @@ export const EMPTY_PROFILE = {
   address: '',
   tel: '',
   email: '',
+  logo_data_url: '',
 }
 
 export function useBusinessProfile() {

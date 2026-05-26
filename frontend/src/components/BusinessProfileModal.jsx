@@ -7,8 +7,22 @@ const labelClass = 'block text-xs font-medium text-gray-400 mb-1.5'
 
 export default function BusinessProfileModal({ profile, onSave, onClose }) {
   const [form, setForm] = React.useState(profile ?? EMPTY_PROFILE)
+  const [logoError, setLogoError] = React.useState('')
 
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 500 * 1024) {
+      setLogoError('ロゴ画像は500KB以下にしてください')
+      return
+    }
+    setLogoError('')
+    const reader = new FileReader()
+    reader.onload = (ev) => set('logo_data_url', ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   const handleSave = (e) => {
     e.preventDefault()
@@ -121,6 +135,33 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
                 placeholder="例: info@example.com"
                 className={inputClass}
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className={labelClass}>ロゴ画像（任意・500KB以下）</label>
+              {form.logo_data_url && (
+                <div className="flex items-center gap-3 mb-2">
+                  <img
+                    src={form.logo_data_url}
+                    alt="ロゴ"
+                    className="h-12 object-contain rounded border border-navy-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set('logo_data_url', '')}
+                    className="text-xs text-gray-500 hover:text-red-400 underline transition-colors"
+                  >
+                    削除
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="block w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-navy-600 file:text-xs file:font-medium file:text-gray-300 file:bg-navy-800 hover:file:bg-navy-700 file:cursor-pointer file:transition-colors"
+              />
+              {logoError && <p className="text-xs text-red-400 mt-1">{logoError}</p>}
             </div>
           </div>
 

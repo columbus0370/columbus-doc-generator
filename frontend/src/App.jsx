@@ -1,10 +1,11 @@
 import React from 'react'
 import WizardContainer from './components/wizard/WizardContainer'
-import PreviewPanel from './components/PreviewPanel'
+import DocumentEditor from './components/DocumentEditor'
 import DownloadButton from './components/DownloadButton'
 import BusinessProfileModal from './components/BusinessProfileModal'
 import { generateDocument } from './api/generate'
 import { useBusinessProfile } from './hooks/useBusinessProfile'
+import { injectLogo } from './utils/logoInjector'
 
 export default function App() {
   const [result, setResult] = React.useState(null)
@@ -21,7 +22,11 @@ export default function App() {
     setResult(null)
     try {
       const data = await generateDocument(formData)
-      setResult(data)
+      const logoDataUrl = profile?.logo_data_url || null
+      const enrichedHtml = logoDataUrl
+        ? injectLogo(data.generated_text, logoDataUrl)
+        : data.generated_text
+      setResult({ ...data, generated_text: enrichedHtml })
     } catch (e) {
       if (e instanceof TypeError && e.message === 'Failed to fetch') {
         setError('サーバーに接続できませんでした。バックエンドが起動しているか確認してください。')
@@ -41,6 +46,10 @@ export default function App() {
 
   const handleSaveProfile = (data) => {
     saveProfile(data)
+  }
+
+  const handleHtmlChange = (newHtml) => {
+    setResult((prev) => ({ ...prev, generated_text: newHtml }))
   }
 
   return (
@@ -102,7 +111,11 @@ export default function App() {
             </div>
 
             <div className="bg-navy-800 rounded-2xl p-4 sm:p-6 border border-navy-700">
-              <PreviewPanel title={result.title} text={result.generated_text} />
+              <DocumentEditor
+                title={result.title}
+                htmlString={result.generated_text}
+                onHtmlChange={handleHtmlChange}
+              />
             </div>
           </div>
         ) : (

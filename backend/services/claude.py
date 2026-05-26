@@ -26,6 +26,8 @@ tr:nth-child(even) td { background: #f7f9fc; }
 .label { color: #555; font-size: 11px; }
 .accent { color: #1a3a5c; font-weight: bold; }
 .divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 16px 0; }
+.doc-logo-area { min-height: 0; margin-bottom: 8px; }
+.doc-logo { max-height: 60px; max-width: 200px; object-fit: contain; display: block; }
 @media print {
   body { background: #fff; padding: 0; }
   .doc { box-shadow: none; padding: 15mm 20mm; }
@@ -45,7 +47,7 @@ _ESTIMATE_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成する�
 {_BASE_STYLE}
 
 ## 見積書の構成
-1. ヘッダー: 左=会社名ブロック（#1a3a5c背景・白文字）、右=「御 見 積 書」（20px bold・letter-spacing:4px）＋発行日・見積番号・有効期限
+1. ヘッダー: 左=会社名ブロック（#1a3a5c背景・白文字）、右=「御 見 積 書」（20px bold・letter-spacing:4px）＋発行日・見積番号・有効期限。ヘッダー左ブロックの最上部に `<div class="doc-logo-area"></div>` を空で配置すること。
 2. 区切り線（.divider）
 3. 2カラム: 左=宛先（会社名・担当者）、右=発行者（会社名・住所・TEL・担当者）
 4. 御見積金額ボックス: 背景#f0f4f9・border #1a3a5c、左=件名、右=合計金額（20px bold）
@@ -67,7 +69,7 @@ _PROPOSAL_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成する�
 {_BASE_STYLE}
 
 ## 提案書の構成（スクロール1ページ、セクション区切りで表示）
-1. カバーブロック: background #1a3a5c・白文字・padding 32px、提案タイトル（22px）・提案先・日付・担当者
+1. カバーブロック: background #1a3a5c・白文字・padding 32px、提案タイトル（22px）・提案先・日付・担当者。ブロック内の先頭に `<div class="doc-logo-area"></div>` を空で配置すること。
 2. エグゼクティブサマリー: 2〜3文の概要テキスト
 3. 課題セクション（h2）: 2〜3件のカード（border-left:3px solid #e53935）、タイトル＋説明文
 4. 解決策セクション（h2）: 2〜3件のカード（border-left:3px solid #1a3a5c）、ステップ番号＋タイトル＋説明
@@ -88,7 +90,7 @@ _REPORT_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成するア�
 {_BASE_STYLE}
 
 ## レポートの構成
-1. ヘッダー: background #1a3a5c・白文字、「業務月次レポート」タイトル＋対象期間、右側に作成者・提出先・作成日
+1. ヘッダー: background #1a3a5c・白文字、「業務月次レポート」タイトル＋対象期間、右側に作成者・提出先・作成日。ヘッダー内の先頭に `<div class="doc-logo-area"></div>` を空で配置すること。
 2. KPI 4指標: 横並びボックス（各 background:#f0f4f9、数値18px bold #1a3a5c、前月比バッジ）
 3. 売上推移サマリー: シンプルなテーブル（月 / 実績 / 目標 / 達成率 の6ヶ月分）
 4. プロジェクト進捗テーブル: プロジェクト名 / 担当 / 期限 / 進捗(CSSバー) / 状況 / 備考
