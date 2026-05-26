@@ -1,34 +1,19 @@
 import React from 'react'
-import { downloadPdf } from '../api/generate'
 
 export default function DownloadButton({ text, title }) {
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState('')
-
-  React.useEffect(() => {
-    setError('')
-  }, [text])
-
-  const handleDownloadPdf = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const blob = await downloadPdf(text)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${title}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      if (e instanceof TypeError && e.message === 'Failed to fetch') {
-        setError('サーバーに接続できませんでした。バックエンドが起動しているか確認してください。')
-      } else {
-        setError(e.message)
-      }
-    } finally {
-      setLoading(false)
+  const handlePrintPdf = () => {
+    const win = window.open('', '_blank')
+    if (!win) {
+      alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。')
+      return
     }
+    win.document.write(text)
+    win.document.close()
+    // Wait for resources (fonts, images) to load before printing
+    win.addEventListener('load', () => {
+      win.focus()
+      win.print()
+    })
   }
 
   const handleDownloadHtml = () => {
@@ -45,31 +30,15 @@ export default function DownloadButton({ text, title }) {
 
   return (
     <div className="mt-4 space-y-2">
-      {error && (
-        <p className="text-red-400 text-sm">{error}</p>
-      )}
       <div className="flex gap-2">
         <button
-          onClick={handleDownloadPdf}
-          disabled={loading}
-          className="flex-1 bg-navy-800 hover:bg-navy-700 border border-accent text-accent hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+          onClick={handlePrintPdf}
+          className="flex-1 bg-navy-800 hover:bg-navy-700 border border-accent text-accent hover:text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
         >
-          {loading ? (
-            <>
-              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              PDF生成中...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              PDFでダウンロード
-            </>
-          )}
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          印刷 / PDF保存
         </button>
         <button
           onClick={handleDownloadHtml}
@@ -81,6 +50,9 @@ export default function DownloadButton({ text, title }) {
           HTMLでダウンロード
         </button>
       </div>
+      <p className="text-xs text-gray-500 text-center">
+        PDF保存は印刷ダイアログで「PDFに保存」を選択してください
+      </p>
     </div>
   )
 }
