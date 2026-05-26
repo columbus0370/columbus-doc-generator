@@ -39,8 +39,13 @@ export default function DocumentEditor({ htmlString, title, onHtmlChange }) {
     if (!iframe) return
     try {
       iframe.contentDocument.designMode = 'on'
+      // CSPで外部通信をブロック
+      const cspMeta = iframe.contentDocument.createElement('meta')
+      cspMeta.httpEquiv = 'Content-Security-Policy'
+      cspMeta.content = "default-src 'self' 'unsafe-inline'; connect-src 'none'; img-src data: blob:"
+      iframe.contentDocument.head.appendChild(cspMeta)
     } catch {
-      // cross-origin guard (shouldn't happen with srcDoc)
+      // ignore
     }
   }
 
@@ -123,7 +128,7 @@ export default function DocumentEditor({ htmlString, title, onHtmlChange }) {
           onLoad={handleEditLoad}
           className="w-full rounded-lg border border-navy-700"
           style={{ height: 'calc(100vh - 400px)', minHeight: '500px', background: '#fff' }}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
         />
       </div>
     )

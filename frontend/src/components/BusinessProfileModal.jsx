@@ -11,13 +11,37 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
 
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+
     if (file.size > 500 * 1024) {
       setLogoError('ロゴ画像は500KB以下にしてください')
       return
     }
+
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      setLogoError('SVGファイルは使用できません。JPEG/PNG/GIFをご使用ください')
+      return
+    }
+
+    const allowedSignatures = [
+      { bytes: [0xFF, 0xD8, 0xFF] },       // JPEG
+      { bytes: [0x89, 0x50, 0x4E, 0x47] }, // PNG
+      { bytes: [0x47, 0x49, 0x46] },        // GIF
+    ]
+
+    const arrayBuffer = await file.slice(0, 4).arrayBuffer()
+    const header = new Uint8Array(arrayBuffer)
+    const isAllowed = allowedSignatures.some(sig =>
+      sig.bytes.every((byte, i) => header[i] === byte)
+    )
+
+    if (!isAllowed) {
+      setLogoError('JPEG、PNG、GIFのみ使用できます')
+      return
+    }
+
     setLogoError('')
     const reader = new FileReader()
     reader.onload = (ev) => set('logo_data_url', ev.target.result)
@@ -157,7 +181,7 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
               )}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif"
                 onChange={handleLogoUpload}
                 className="block w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-navy-600 file:text-xs file:font-medium file:text-gray-300 file:bg-navy-800 hover:file:bg-navy-700 file:cursor-pointer file:transition-colors"
               />

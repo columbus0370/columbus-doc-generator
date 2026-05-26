@@ -7,3 +7,4 @@ python-multipart==0.0.12
 Pillow>=10.0.0
 fonttools>=4.34.0
 fpdf2>=2.7.0
+slowapi==0.1.9

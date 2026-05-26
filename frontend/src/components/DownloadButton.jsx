@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function DownloadButton({ text, title }) {
   const handlePrintPdf = () => {
-    const win = window.open('', '_blank')
+    const win = window.open('', '_blank', 'noopener,noreferrer')
     if (!win) {
       alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。')
       return

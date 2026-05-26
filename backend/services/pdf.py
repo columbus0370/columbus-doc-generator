@@ -69,9 +69,19 @@ body, * {{ font-family: 'NotoSansJP','Yu Gothic','Meiryo',sans-serif !important;
     return font_css + html
 
 
+def _blocked_url_fetcher(url, timeout=10, ssl_context=None):
+    from weasyprint.urls import URLFetchingError
+    if url.startswith("data:") or url.startswith("file:"):
+        from weasyprint.urls import default_url_fetcher
+        return default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
+    raise URLFetchingError(f"外部URLフェッチをブロックしました: {url}")
+
 def _generate_with_weasyprint(html_content: str) -> bytes:
     from weasyprint import HTML, CSS
-    return HTML(string=_inject_weasyprint_fonts(html_content)).write_pdf(
+    return HTML(
+        string=_inject_weasyprint_fonts(html_content),
+        url_fetcher=_blocked_url_fetcher,
+    ).write_pdf(
         stylesheets=[CSS(string=_PRINT_CSS)]
     )
 
