@@ -1,119 +1,54 @@
 # Columbus AI 書類ジェネレーター
 
-## 概要
+> 質問に答えるだけで見積書・提案書・業務レポートをAIが自動生成
 
-業務書類（見積書・提案書・業務レポート）をAIで自動生成するWebアプリ。
-必要事項を入力するだけで、プロ品質の書類が数秒で完成し、PDFでダウンロードできます。
+🔗 **デモ**: https://columbus-doc-generator-p7w5etuj6-columbus0370s-projects.vercel.app/
+📦 **Backend**: Python / FastAPI / Render.com
+🎨 **Frontend**: React 18 / Vite / Tailwind CSS
+🤖 **AI**: Anthropic Claude API
 
-## デモ
+## スクリーンショット
+ホーム画面
+<img width="1865" height="814" alt="image" src="https://github.com/user-attachments/assets/8ebb59db-5069-4a5d-af20-5e85b6aea3d0" />
 
-- フロントエンド: https://columbus-doc-generator.vercel.app （デプロイ後に更新）
-- バックエンド API: https://columbus-doc-generator-api.onrender.com
+事業者情報画面
+<img width="833" height="681" alt="image" src="https://github.com/user-attachments/assets/cf075742-47a9-415f-b165-abedb0902de7" />
 
-## 技術スタック
+質問事項画面
+<img width="1109" height="641" alt="image" src="https://github.com/user-attachments/assets/a4edd722-088f-458b-8e0b-a6fe6c35d318" />
 
-| 領域 | 技術 |
-|------|------|
-| フロントエンド | React 18 (Vite) + Tailwind CSS |
-| バックエンド | Python / FastAPI |
-| AI | Anthropic Claude API (claude-sonnet-4-6) |
-| PDF生成 | fpdf2（日本語フォント対応） |
-| バックエンドデプロイ | Render.com |
-| フロントエンドデプロイ | Vercel |
+明細記入画面
+<img width="1254" height="715" alt="image" src="https://github.com/user-attachments/assets/19f9fd91-82be-4d43-a3a7-c070e15ae9de" />
 
-## 本番環境デプロイ手順
+確認画面
+<img width="1142" height="713" alt="image" src="https://github.com/user-attachments/assets/eb0baeaa-1df6-4406-acb3-2e5f436c25f6" />
 
-### 1. GitHubにプッシュ
+AI生成中画面
+<img width="1087" height="549" alt="image" src="https://github.com/user-attachments/assets/57ffc2a8-5999-4d7f-b3e2-58029580b377" />
 
-```bash
-git init
-git add .
-git commit -m "initial commit"
-git remote add origin https://github.com/<your-username>/columbus-doc-generator.git
-git push -u origin main
-```
+プレビュー画面
+<img width="1872" height="803" alt="image" src="https://github.com/user-attachments/assets/2aec54b9-683b-471f-9345-fea38f0dece1" />
 
-### 2. Render.com バックエンドデプロイ
+編集画面
+<img width="1801" height="668" alt="image" src="https://github.com/user-attachments/assets/14b7e9ae-8664-4e6d-aa69-315d9f2b63b4" />
 
-1. https://render.com でサインイン
-2. 「New」→「Web Service」→ GitHubリポジトリを接続
-3. `render.yaml` が自動検出される（または手動で設定）
-4. 「Environment Variables」で以下を設定:
-   - `ANTHROPIC_API_KEY`: Anthropic APIキー
-   - `CORS_ORIGINS`: フロントエンドのVercel URL（例: `https://columbus-doc-generator.vercel.app`）
-5. デプロイ完了後、サービスURLをメモ（例: `https://columbus-doc-generator-api.onrender.com`）
 
-### 3. Vercel フロントエンドデプロイ
+印刷、PDF出力画面
+<img width="1603" height="840" alt="image" src="https://github.com/user-attachments/assets/410868b7-51dc-4681-88e3-6a3fbef75781" />
 
-1. https://vercel.com でサインイン
-2. 「New Project」→ GitHubリポジトリを接続
-3. 「Root Directory」に `frontend` を指定
-4. 「Environment Variables」で以下を設定:
-   - `VITE_API_URL`: RenderのバックエンドURL（例: `https://columbus-doc-generator-api.onrender.com`）
-5. デプロイ
 
----
 
-## ローカル開発
+## 機能
+- ウィザード形式で3種類の書類を生成（見積書・提案書・業務レポート）
+- ブラウザ上でプレビュー・WYSIWYG編集
+- ロゴ画像のアップロード・自動埋め込み
+- 印刷 / PDF保存対応
+- 事業者情報のローカル保存
 
-### 前提条件
+## 技術的な工夫
+- Claude API の prompt caching で応答速度を最適化
+- SSRF防止・レート制限・CSPヘッダーなどセキュリティ対策済み
+- iframeサンドボックスによる安全なHTML表示
 
-- Node.js 18+
-- Python 3.11+
-- Anthropic API キー
-
-### バックエンド
-
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
-
-pip install -r requirements.txt
-
-cp ../.env.example .env
-# .env に ANTHROPIC_API_KEY を設定
-
-uvicorn main:app --reload --port 8081
-```
-
-### フロントエンド
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-ブラウザで http://localhost:5173 を開く。
-
-## ディレクトリ構成
-
-```
-columbus-doc-generator/
-├── frontend/
-│   ├── vercel.json                # Vercel SPAルーティング設定
-│   ├── .env.production            # 本番環境変数（VITE_API_URL）
-│   └── src/
-│       ├── App.jsx
-│       ├── components/
-│       │   ├── DocumentForm.jsx   # 入力フォーム
-│       │   ├── PreviewPanel.jsx   # プレビュー表示
-│       │   └── DownloadButton.jsx # PDFダウンロード
-│       └── api/
-│           └── generate.js        # APIクライアント
-├── backend/
-│   ├── main.py                    # FastAPIエントリーポイント
-│   ├── requirements.txt
-│   ├── routers/generate.py        # APIルーター
-│   └── services/
-│       ├── claude.py              # Claude API連携
-│       └── pdf.py                 # PDF生成（fpdf2、日本語対応）
-├── render.yaml                    # Render.com デプロイ設定
-└── .env.example
-```
-
-## 開発者
-
-Columbus | AI × 業務改善ツール開発
+## セットアップ
+[手順]
