@@ -2,7 +2,7 @@
 
 > 質問に答えるだけで見積書・提案書・業務レポートをAIが自動生成
 
-🔗 **デモ**: https://columbus-doc-generator-p7w5etuj6-columbus0370s-projects.vercel.app/
+🔗 **デモ**: https://columbus-doc-generator.vercel.app/
 📦 **Backend**: Python / FastAPI / Render.com
 🎨 **Frontend**: React 18 / Vite / Tailwind CSS
 🤖 **AI**: Anthropic Claude API
