@@ -6,18 +6,14 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _FONT_DIR = Path(__file__).parent.parent / "fonts"
-_NOTO_REGULAR_OTF = _FONT_DIR / "NotoSansJP-Regular.otf"
 _NOTO_REGULAR_TTF = _FONT_DIR / "NotoSansJP-Regular.ttf"
-_NOTO_BOLD        = _FONT_DIR / "NotoSansJP-Bold.ttf"
+_NOTO_BOLD_TTF    = _FONT_DIR / "NotoSansJP-Bold.ttf"
 _EXTRACTED_TTF    = _FONT_DIR / "cjk_extracted.ttf"
 
-# System font candidates (fallback when bundled font is unavailable)
+# System font candidates (fallback when bundled TTF unavailable)
 _SYSTEM_CJK_CANDIDATES: list[tuple[Path, str]] = [
     (Path("/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"),  "truetype"),
     (Path("/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"), "truetype"),
-    (Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"), "truetype"),
-    (Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"), "truetype"),
-    (Path("/usr/share/fonts/opentype/noto/NotoSansJP-Regular.otf"),  "opentype"),
 ]
 
 _PRINT_CSS = """
@@ -43,7 +39,6 @@ def _load_font_as_data_uri(path: Path, fmt: str) -> str | None:
 def _build_font_css() -> str:
     """Build @font-face CSS with font embedded as base64 (no external file dependency)."""
     candidates = [
-        (_NOTO_REGULAR_OTF, "opentype"),
         (_NOTO_REGULAR_TTF, "truetype"),
         *_SYSTEM_CJK_CANDIDATES,
     ]
@@ -54,8 +49,8 @@ def _build_font_css() -> str:
         if uri:
             logger.info("Font loaded for PDF: %s (%s)", path.name, fmt)
             bold_uri = uri  # reuse regular as bold fallback
-            if _NOTO_BOLD.exists():
-                bold_data_uri = _load_font_as_data_uri(_NOTO_BOLD, "truetype")
+            if _NOTO_BOLD_TTF.exists():
+                bold_data_uri = _load_font_as_data_uri(_NOTO_BOLD_TTF, "truetype")
                 if bold_data_uri:
                     bold_uri = bold_data_uri
             return (
@@ -105,7 +100,7 @@ def _generate_with_weasyprint(html_content: str) -> bytes:
 # ──────────────────────────────────────────────
 
 def _get_cjk_ttf_for_fpdf() -> Path | None:
-    for path, _ in [(_NOTO_REGULAR_OTF, ""), (_NOTO_REGULAR_TTF, ""), (_EXTRACTED_TTF, "")]:
+    for path in [_NOTO_REGULAR_TTF, _EXTRACTED_TTF]:
         if path.exists():
             return path
     for path, _ in _SYSTEM_CJK_CANDIDATES:
