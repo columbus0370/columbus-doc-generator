@@ -15,7 +15,9 @@ _SECURITY_CONSTRAINT = """
 _BASE_STYLE = """
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-x: auto; }
 body {
+  min-width: 600px;
   font-family: 'Yu Gothic','Meiryo','Hiragino Sans','MS PGothic',sans-serif;
   font-size: 12px; color: #222; background: #f0f2f5; padding: 24px 16px;
 }
@@ -26,7 +28,7 @@ body {
 h1 { font-size: 22px; color: #1a3a5c; }
 h2 { font-size: 14px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin: 20px 0 10px; }
 table { width: 100%; border-collapse: collapse; margin: 12px 0; table-layout: fixed; }
-th { background: #1a3a5c; color: #fff; padding: 7px 6px; font-size: 11px; text-align: center; word-break: keep-all; overflow-wrap: break-word; }
+th { background: #1a3a5c; color: #fff; padding: 7px 4px; font-size: 11px; text-align: center; white-space: nowrap; }
 td { padding: 6px 6px; border-bottom: 1px solid #e0e5ec; font-size: 11px; word-break: break-word; vertical-align: top; }
 td.num { white-space: nowrap; text-align: right; }
 tr:nth-child(even) td { background: #f7f9fc; }
@@ -39,13 +41,9 @@ tr:nth-child(even) td { background: #f7f9fc; }
 .doc-logo-area { min-height: 0; margin-bottom: 8px; }
 .doc-logo { max-height: 60px; max-width: 200px; object-fit: contain; display: block; }
 @media print {
-  body { background: #fff; padding: 0; }
-  .doc { box-shadow: none; padding: 15mm 20mm; }
+  html, body { min-width: 0; overflow: visible; background: #fff; padding: 0; }
+  .doc { box-shadow: none; padding: 15mm 20mm; max-width: 100%; }
   .no-print { display: none; }
-}
-@media (max-width: 600px) {
-  .doc { padding: 20px 16px; }
-  .two-col { flex-direction: column; }
 }
 </style>
 """
