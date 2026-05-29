@@ -25,13 +25,14 @@ body {
 }
 h1 { font-size: 22px; color: #1a3a5c; }
 h2 { font-size: 14px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin: 20px 0 10px; }
-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-th { background: #1a3a5c; color: #fff; padding: 7px 8px; font-size: 11px; text-align: center; }
-td { padding: 6px 8px; border-bottom: 1px solid #e0e5ec; font-size: 11px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; table-layout: fixed; }
+th { background: #1a3a5c; color: #fff; padding: 7px 6px; font-size: 11px; text-align: center; word-break: keep-all; overflow-wrap: break-word; }
+td { padding: 6px 6px; border-bottom: 1px solid #e0e5ec; font-size: 11px; word-break: break-word; vertical-align: top; }
+td.num { white-space: nowrap; text-align: right; }
 tr:nth-child(even) td { background: #f7f9fc; }
 .right { text-align: right; }
-.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; font-size: 13px; }
-.subtotal-row td { font-weight: bold; color: #1a3a5c; }
+.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; font-size: 13px; white-space: nowrap; }
+.subtotal-row td { font-weight: bold; color: #1a3a5c; white-space: nowrap; }
 .label { color: #555; font-size: 11px; }
 .accent { color: #1a3a5c; font-weight: bold; }
 .divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 16px 0; }
@@ -60,7 +61,10 @@ _ESTIMATE_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成する�
 2. 区切り線（.divider）
 3. 2カラム: 左=宛先（会社名・担当者）、右=発行者（会社名・住所・TEL・担当者。発行者情報にインボイス登録番号がある場合はここに記載）
 4. 御見積金額ボックス: 背景#f0f4f9・border #1a3a5c、左=件名、右=合計金額（税込・20px bold）
-5. 明細テーブル: 品名 / 作業内容・仕様 / 数量 / 単位 / 単価 / 金額（列幅はcolgroup指定）
+5. 明細テーブル: 必ず以下の colgroup で列幅を固定すること（table-layout:fixed 前提）
+   <colgroup><col style="width:20%"><col style="width:32%"><col style="width:8%"><col style="width:8%"><col style="width:16%"><col style="width:16%"></colgroup>
+   列ヘッダー(th): 品名 / 作業内容・仕様 / 数量 / 単位 / 単価 / 金額
+   - 数量・単位・単価・金額の td は class="num" を付けること（右寄せ・折り返し禁止）
 6. 合計欄（右寄せ）: 小計(.subtotal-row) → 消費税10%(.subtotal-row) → 合計(.total-row) の3行
 7. 備考欄（h2）: 以下を必ず含める
    - 修正対応回数（入力値を反映。例「修正2回まで含む」）
