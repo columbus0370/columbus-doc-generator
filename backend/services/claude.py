@@ -40,9 +40,13 @@ tr:nth-child(even) td { background: #f7f9fc; }
 .divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 16px 0; }
 .doc-logo-area { min-height: 0; margin-bottom: 8px; }
 .doc-logo { max-height: 60px; max-width: 200px; object-fit: contain; display: block; }
+@page { size: A4; margin: 0; }
 @media print {
-  html, body { min-width: 0; overflow: visible; background: #fff; padding: 0; }
-  .doc { box-shadow: none; padding: 15mm 20mm; max-width: 100%; }
+  html, body { min-width: 0; overflow: visible; background: #fff; padding: 0; font-size: 11px; }
+  .doc { box-shadow: none; padding: 8mm 12mm; max-width: 100%; }
+  h2 { margin: 10px 0 5px; }
+  .divider { margin: 8px 0; }
+  table { margin: 6px 0; }
   .no-print { display: none; }
 }
 </style>
