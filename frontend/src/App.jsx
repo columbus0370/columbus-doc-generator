@@ -266,6 +266,7 @@ export default function App() {
       {/* メール文面モーダル */}
       {showEmail && result && (
         <EmailDraftModal
+          htmlString={result.generated_text}
           clientName={result.client_name || ''}
           companyName={profile?.business_name || ''}
           workTypeLabel={result.work_type_label || ''}
