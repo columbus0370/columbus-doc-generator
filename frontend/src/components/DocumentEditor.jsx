@@ -1,7 +1,31 @@
 import React from 'react'
 
+const ZOOM_SCRIPT = `<script>
+(function(){
+  function applyZoom(){
+    var docEl=document.documentElement;
+    docEl.style.zoom='';
+    var docW=Math.max(docEl.scrollWidth,600);
+    var vw=window.innerWidth;
+    if(vw<docW) docEl.style.zoom=vw/docW;
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',applyZoom);
+  } else {
+    applyZoom();
+  }
+  window.addEventListener('resize',applyZoom);
+})();
+</script>`
+
+function injectZoom(html) {
+  if (html.includes('</body>')) return html.replace('</body>', ZOOM_SCRIPT + '\n</body>')
+  if (html.includes('</html>')) return html.replace('</html>', ZOOM_SCRIPT + '\n</html>')
+  return html + ZOOM_SCRIPT
+}
+
 function wrapInShell(content) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${content}</body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${content}${ZOOM_SCRIPT}</body></html>`
 }
 
 export default function DocumentEditor({ htmlString, title }) {
@@ -10,7 +34,7 @@ export default function DocumentEditor({ htmlString, title }) {
   const isFullHtml = htmlString && /^(﻿)?\s*<!doctype|^(﻿)?\s*<html/i.test(htmlString)
   const srcDoc = htmlString
     ? isFullHtml
-      ? htmlString
+      ? injectZoom(htmlString)
       : wrapInShell(htmlString)
     : wrapInShell('')
 
