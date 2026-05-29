@@ -2,7 +2,7 @@ services:
   - type: web
     name: columbus-doc-generator-api
     runtime: python
-    buildCommand: pip install -r backend/requirements.txt && (apt-get install -y --no-install-recommends fonts-noto-cjk && fc-cache -f || true) && mkdir -p backend/fonts && (wget -q -O backend/fonts/NotoSansJP-Regular.ttf https://github.com/google/fonts/raw/main/ofl/notosansjp/NotoSansJP-Regular.ttf; wget -q -O backend/fonts/NotoSansJP-Bold.ttf https://github.com/google/fonts/raw/main/ofl/notosansjp/NotoSansJP-Bold.ttf; true)
+    buildCommand: pip install -r backend/requirements.txt && (apt-get install -y --no-install-recommends fonts-ipafont-gothic && fc-cache -f || true)
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ANTHROPIC_API_KEY

@@ -5,16 +5,21 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _FONT_DIR = Path(__file__).parent.parent / "fonts"
-_NOTO_REGULAR  = _FONT_DIR / "NotoSansJP-Regular.ttf"
-_NOTO_BOLD     = _FONT_DIR / "NotoSansJP-Bold.ttf"
-_EXTRACTED_TTF = _FONT_DIR / "cjk_extracted.ttf"
+_NOTO_REGULAR     = _FONT_DIR / "NotoSansJP-Regular.ttf"
+_NOTO_REGULAR_OTF = _FONT_DIR / "NotoSansJP-Regular.otf"
+_NOTO_BOLD        = _FONT_DIR / "NotoSansJP-Bold.ttf"
+_EXTRACTED_TTF    = _FONT_DIR / "cjk_extracted.ttf"
 
-# Ubuntu/Debian system paths installed by fonts-noto-cjk apt package
+# System font candidates (checked in order)
 _SYSTEM_CJK_CANDIDATES: list[tuple[Path, str]] = [
+    # Noto CJK (fonts-noto-cjk apt package)
     (Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"), "truetype"),
     (Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"), "truetype"),
     (Path("/usr/share/fonts/opentype/noto/NotoSansJP-Regular.otf"),  "opentype"),
     (Path("/usr/share/fonts/noto-cjk/NotoSansCJKjp-Regular.otf"),    "opentype"),
+    # IPA fonts (fonts-ipafont-gothic apt package — pre-installed on many Ubuntu images)
+    (Path("/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"),  "truetype"),
+    (Path("/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"), "truetype"),
     # macOS
     (Path("/Library/Fonts/NotoSansJP-Regular.ttf"), "truetype"),
 ]
@@ -41,6 +46,8 @@ def _find_ttc_source() -> str | None:
 def _get_cjk_ttf() -> Path | None:
     if _NOTO_REGULAR.exists():
         return _NOTO_REGULAR
+    if _NOTO_REGULAR_OTF.exists():
+        return _NOTO_REGULAR_OTF
     if _EXTRACTED_TTF.exists():
         return _EXTRACTED_TTF
     ttc_path = _find_ttc_source()
@@ -66,17 +73,22 @@ _CJK_TTF: Path | None = _get_cjk_ttf()
 
 def _find_weasyprint_font() -> tuple[str, str] | None:
     """Return (file_uri, css_format) for the best available CJK font."""
-    # 1. Local downloaded TTF (preferred — most reliable for WeasyPrint)
+    # 1. Git-committed OTF (most reliable — always present)
+    if _NOTO_REGULAR_OTF.exists():
+        logger.info("Using bundled OTF: %s", _NOTO_REGULAR_OTF)
+        return _NOTO_REGULAR_OTF.as_uri(), "opentype"
+
+    # 2. Local downloaded TTF
     if _NOTO_REGULAR.exists():
         return _NOTO_REGULAR.as_uri(), "truetype"
 
-    # 2. System fonts installed via apt-get install fonts-noto-cjk
+    # 3. System fonts installed via apt
     for path, fmt in _SYSTEM_CJK_CANDIDATES:
         if path.exists():
             logger.info("Using system CJK font: %s", path)
             return path.as_uri(), fmt
 
-    # 3. Previously extracted TTF
+    # 4. Previously extracted TTF
     if _EXTRACTED_TTF.exists():
         return _EXTRACTED_TTF.as_uri(), "truetype"
 
