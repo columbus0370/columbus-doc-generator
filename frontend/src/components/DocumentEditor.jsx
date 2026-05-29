@@ -3,11 +3,15 @@ import React from 'react'
 const ZOOM_SCRIPT = `<script>
 (function(){
   function applyZoom(){
-    var docEl=document.documentElement;
-    docEl.style.zoom='';
-    var docW=Math.max(docEl.scrollWidth,600);
     var vw=window.innerWidth;
-    if(vw<docW) docEl.style.zoom=vw/docW;
+    var intended=800;
+    if(vw<intended){
+      document.documentElement.style.zoom=(vw/intended).toFixed(4);
+      document.body.style.minWidth='0';
+    } else {
+      document.documentElement.style.zoom='';
+      document.body.style.minWidth='';
+    }
   }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',applyZoom);

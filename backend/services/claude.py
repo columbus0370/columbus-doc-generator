@@ -17,32 +17,31 @@ _BASE_STYLE = """
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { overflow-x: auto; }
 body {
-  min-width: 600px;
   font-family: 'Yu Gothic','Meiryo','Hiragino Sans','MS PGothic',sans-serif;
-  font-size: 12px; color: #222; background: #f0f2f5; padding: 24px 16px;
+  font-size: 12px; color: #222; background: #f0f2f5; padding: 20px 12px;
 }
 .doc {
   max-width: 800px; margin: 0 auto; background: #fff;
-  padding: 36px 40px; box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  padding: 28px 32px; box-shadow: 0 2px 12px rgba(0,0,0,.08);
 }
-h1 { font-size: 22px; color: #1a3a5c; }
-h2 { font-size: 14px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin: 20px 0 10px; }
-table { width: 100%; border-collapse: collapse; margin: 12px 0; table-layout: fixed; }
-th { background: #1a3a5c; color: #fff; padding: 7px 4px; font-size: 11px; text-align: center; white-space: nowrap; }
-td { padding: 6px 6px; border-bottom: 1px solid #e0e5ec; font-size: 11px; word-break: break-word; vertical-align: top; }
-td.num { white-space: nowrap; text-align: right; }
+h1 { font-size: 20px; color: #1a3a5c; }
+h2 { font-size: 13px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 3px; margin: 16px 0 8px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; table-layout: fixed; }
+th { background: #1a3a5c; color: #fff; padding: 6px 4px; font-size: 11px; text-align: center; white-space: nowrap; }
+td { padding: 5px 6px; border-bottom: 1px solid #e0e5ec; font-size: 11px; word-break: break-word; vertical-align: top; }
+td.num { white-space: nowrap; text-align: right; overflow: hidden; }
 tr:nth-child(even) td { background: #f7f9fc; }
 .right { text-align: right; }
-.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; font-size: 13px; white-space: nowrap; }
-.subtotal-row td { font-weight: bold; color: #1a3a5c; white-space: nowrap; }
+.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; white-space: nowrap; overflow: hidden; }
+.subtotal-row td { font-weight: bold; color: #1a3a5c; white-space: nowrap; overflow: hidden; }
 .label { color: #555; font-size: 11px; }
 .accent { color: #1a3a5c; font-weight: bold; }
-.divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 16px 0; }
-.doc-logo-area { min-height: 0; margin-bottom: 8px; }
+.divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 12px 0; }
+.doc-logo-area { min-height: 0; margin-bottom: 6px; }
 .doc-logo { max-height: 60px; max-width: 200px; object-fit: contain; display: block; }
 @page { size: A4; margin: 0; }
 @media print {
-  html, body { min-width: 0; overflow: visible; background: #fff; padding: 0; font-size: 11px; }
+  html, body { overflow: visible; background: #fff; padding: 0; font-size: 11px; }
   .doc { box-shadow: none; padding: 8mm 12mm; max-width: 100%; }
   h2 { margin: 10px 0 5px; }
   .divider { margin: 8px 0; }
@@ -67,7 +66,10 @@ _ESTIMATE_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成する�
    <colgroup><col style="width:20%"><col style="width:32%"><col style="width:8%"><col style="width:8%"><col style="width:16%"><col style="width:16%"></colgroup>
    列ヘッダー(th): 品名 / 作業内容・仕様 / 数量 / 単位 / 単価 / 金額
    - 数量・単位・単価・金額の td は class="num" を付けること（右寄せ・折り返し禁止）
-6. 合計欄（右寄せ）: 小計(.subtotal-row) → 消費税10%(.subtotal-row) → 合計(.total-row) の3行
+6. 合計欄: 必ず以下の構造で生成すること（6列テーブルの colspan="5" + 金額1列）
+   <tr class="subtotal-row"><td colspan="5" class="right">小計</td><td class="num">¥XX,XXX</td></tr>
+   <tr class="subtotal-row"><td colspan="5" class="right">消費税（10%）</td><td class="num">¥X,XXX</td></tr>
+   <tr class="total-row"><td colspan="5" class="right">合計金額（税込）</td><td class="num">¥XX,XXX</td></tr>
 7. 備考欄（h2）: 以下を必ず含める
    - 修正対応回数（入力値を反映。例「修正2回まで含む」）
    - 「上記明細に記載のない作業は別途お見積りとなります」
