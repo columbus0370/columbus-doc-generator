@@ -5,9 +5,12 @@ const inputClass =
   'w-full bg-navy-900 border border-navy-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors text-sm'
 const labelClass = 'block text-xs font-medium text-gray-400 mb-1.5'
 
+const INVOICE_RE = /^T\d{13}$/
+
 export default function BusinessProfileModal({ profile, onSave, onClose }) {
   const [form, setForm] = React.useState(profile ?? EMPTY_PROFILE)
   const [logoError, setLogoError] = React.useState('')
+  const [invoiceError, setInvoiceError] = React.useState('')
 
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
 
@@ -26,14 +29,14 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
     }
 
     const allowedSignatures = [
-      { bytes: [0xFF, 0xD8, 0xFF] },       // JPEG
-      { bytes: [0x89, 0x50, 0x4E, 0x47] }, // PNG
-      { bytes: [0x47, 0x49, 0x46] },        // GIF
+      { bytes: [0xff, 0xd8, 0xff] },
+      { bytes: [0x89, 0x50, 0x4e, 0x47] },
+      { bytes: [0x47, 0x49, 0x46] },
     ]
 
     const arrayBuffer = await file.slice(0, 4).arrayBuffer()
     const header = new Uint8Array(arrayBuffer)
-    const isAllowed = allowedSignatures.some(sig =>
+    const isAllowed = allowedSignatures.some((sig) =>
       sig.bytes.every((byte, i) => header[i] === byte)
     )
 
@@ -48,8 +51,18 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
     reader.readAsDataURL(file)
   }
 
+  const handleInvoiceChange = (val) => {
+    set('invoice_number', val)
+    if (val && !INVOICE_RE.test(val)) {
+      setInvoiceError('T + 13桁の数字で入力してください（例: T1234567890123）')
+    } else {
+      setInvoiceError('')
+    }
+  }
+
   const handleSave = (e) => {
     e.preventDefault()
+    if (invoiceError) return
     onSave(form)
     onClose()
   }
@@ -61,7 +74,6 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
     }
   }
 
-  // Close on backdrop click
   const handleBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose()
   }
@@ -90,7 +102,8 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSave} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSave} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* 基本情報 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className={labelClass}>
@@ -189,6 +202,88 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
             </div>
           </div>
 
+          {/* インボイス・振込先 */}
+          <div className="pt-3 border-t border-navy-700">
+            <h3 className="text-sm font-semibold text-white mb-3">インボイス・振込先</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>インボイス登録番号（任意）</label>
+                <input
+                  type="text"
+                  value={form.invoice_number}
+                  onChange={(e) => handleInvoiceChange(e.target.value)}
+                  placeholder="T1234567890123"
+                  className={inputClass}
+                />
+                {invoiceError && <p className="text-xs text-red-400 mt-1">{invoiceError}</p>}
+                <p className="text-xs text-gray-600 mt-1">未登録（免税事業者）の場合は空欄でOKです</p>
+              </div>
+
+              <div>
+                <label className={labelClass}>銀行名</label>
+                <input
+                  type="text"
+                  value={form.bank_name}
+                  onChange={(e) => set('bank_name', e.target.value)}
+                  placeholder="例: みずほ銀行"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>支店名</label>
+                <input
+                  type="text"
+                  value={form.bank_branch}
+                  onChange={(e) => set('bank_branch', e.target.value)}
+                  placeholder="例: 渋谷支店"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>口座種別</label>
+                <div className="flex gap-4 pt-1">
+                  {['普通', '当座'].map((t) => (
+                    <label key={t} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="bank_type"
+                        value={t}
+                        checked={form.bank_type === t}
+                        onChange={() => set('bank_type', t)}
+                        className="accent-accent"
+                      />
+                      {t}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>口座番号</label>
+                <input
+                  type="text"
+                  value={form.bank_number}
+                  onChange={(e) => set('bank_number', e.target.value)}
+                  placeholder="例: 1234567"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={labelClass}>口座名義</label>
+                <input
+                  type="text"
+                  value={form.bank_holder}
+                  onChange={(e) => set('bank_holder', e.target.value)}
+                  placeholder="例: ヤマダ タロウ"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-3 border-t border-navy-700">
             {profile ? (
@@ -212,7 +307,8 @@ export default function BusinessProfileModal({ profile, onSave, onClose }) {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-lg bg-accent hover:bg-accent-hover text-white font-bold text-sm transition-colors"
+                disabled={!!invoiceError}
+                className="px-6 py-2.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
               >
                 保存
               </button>

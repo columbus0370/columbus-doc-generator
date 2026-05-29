@@ -1,12 +1,11 @@
 import re
 import logging
-from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 from limiter import limiter
-from services.claude import generate_document
+from services.claude import generate_document, generate_email_body
 from services.pdf import generate_pdf
 
 router = APIRouter(prefix="/api")
@@ -14,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateRequest(BaseModel):
-    doc_type: Literal["estimate", "proposal", "report"]
+    doc_type: str = Field(..., max_length=20)
     client_name: str = Field(..., min_length=1, max_length=100)
-    company_name: str = Field("", max_length=100)
+    company_name: str = Field("", max_length=500)
     content: str = Field(..., min_length=1, max_length=2000)
     amount: str = Field("", max_length=20)
     notes: str = Field("", max_length=500)
@@ -38,9 +37,19 @@ class PdfRequest(BaseModel):
     html_content: str = Field(..., min_length=1, max_length=500_000)
 
 
+class EmailRequest(BaseModel):
+    client_name: str = Field(default="", max_length=100)
+    company_name: str = Field(default="", max_length=100)
+    work_type: str = Field(default="", max_length=50)
+    total_amount: str = Field(default="", max_length=20)
+    deadline: str = Field(default="", max_length=50)
+
+
 @router.post("/generate", response_model=GenerateResponse)
 @limiter.limit("10/minute")
 async def generate(request: Request, req: GenerateRequest):
+    if req.doc_type not in ["estimate"]:
+        raise HTTPException(status_code=400, detail="Invalid doc_type")
     if not req.client_name.strip():
         raise HTTPException(status_code=400, detail="顧客名を入力してください")
     if not req.content.strip():
@@ -84,3 +93,24 @@ async def download_pdf(request: Request, req: PdfRequest):
     except Exception as e:
         logger.exception("download_pdf unexpected error: %s", e)
         raise HTTPException(status_code=500, detail="PDF生成に失敗しました")
+
+
+@router.post("/generate-email")
+@limiter.limit("10/minute")
+async def generate_email(request: Request, req: EmailRequest):
+    try:
+        result = await run_in_threadpool(
+            generate_email_body,
+            client_name=req.client_name,
+            company_name=req.company_name,
+            work_type=req.work_type,
+            total_amount=req.total_amount,
+            deadline=req.deadline,
+        )
+        return result
+    except RuntimeError as e:
+        logger.exception("generate_email RuntimeError: %s", e)
+        raise HTTPException(status_code=503, detail="メール生成に失敗しました")
+    except Exception as e:
+        logger.exception("generate_email unexpected error: %s", e)
+        raise HTTPException(status_code=500, detail="メール生成に失敗しました")
