@@ -208,8 +208,6 @@ export default function App() {
               <div className="flex-1">
                 <DownloadButton
                   text={result.generated_text}
-                  title={result.title}
-                  clientName={result.client_name}
                 />
               </div>
               <button
