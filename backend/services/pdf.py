@@ -1,13 +1,20 @@
 import re
+import base64
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _FONT_DIR = Path(__file__).parent.parent / "fonts"
-_NOTO_REGULAR = _FONT_DIR / "NotoSansJP-Regular.ttf"
-_NOTO_BOLD    = _FONT_DIR / "NotoSansJP-Bold.ttf"
-_EXTRACTED_TTF = _FONT_DIR / "cjk_extracted.ttf"
+_NOTO_REGULAR_TTF = _FONT_DIR / "NotoSansJP-Regular.ttf"
+_NOTO_BOLD_TTF    = _FONT_DIR / "NotoSansJP-Bold.ttf"
+_EXTRACTED_TTF    = _FONT_DIR / "cjk_extracted.ttf"
+
+# System font candidates (fallback when bundled TTF unavailable)
+_SYSTEM_CJK_CANDIDATES: list[tuple[Path, str]] = [
+    (Path("/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"),  "truetype"),
+    (Path("/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf"), "truetype"),
+]
 
 _PRINT_CSS = """
 @page { size: A4; margin: 12mm 15mm; }
@@ -17,56 +24,57 @@ body { background: white !important; padding: 0 !important; }
 """
 
 
-def _find_ttc_source() -> str | None:
-    candidates = [
-        r"C:\Windows\Fonts\msgothic.ttc",
-        r"C:\Windows\Fonts\meiryo.ttc",
-        r"C:\Windows\Fonts\YuGothM.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    ]
-    return next((p for p in candidates if Path(p).exists()), None)
-
-
-def _get_cjk_ttf() -> Path | None:
-    if _NOTO_REGULAR.exists():
-        return _NOTO_REGULAR
-    if _EXTRACTED_TTF.exists():
-        return _EXTRACTED_TTF
-    ttc_path = _find_ttc_source()
-    if not ttc_path:
-        return None
+def _load_font_as_data_uri(path: Path, fmt: str) -> str | None:
+    """Read font file and return CSS data URI string."""
     try:
-        from fontTools.ttLib import TTCollection
-        _FONT_DIR.mkdir(parents=True, exist_ok=True)
-        TTCollection(ttc_path).fonts[0].save(str(_EXTRACTED_TTF))
-        logger.info("CJK font extracted to %s", _EXTRACTED_TTF)
-        return _EXTRACTED_TTF
+        data = path.read_bytes()
+        b64 = base64.b64encode(data).decode("ascii")
+        mime = "font/otf" if fmt == "opentype" else "font/ttf"
+        return f"data:{mime};base64,{b64}"
     except Exception as e:
-        logger.warning("Failed to extract CJK font: %s", e)
+        logger.warning("Failed to read font %s: %s", path, e)
         return None
 
 
-_CJK_TTF: Path | None = _get_cjk_ttf()
+def _build_font_css() -> str:
+    """Build @font-face CSS with font embedded as base64 (no external file dependency)."""
+    candidates = [
+        (_NOTO_REGULAR_TTF, "truetype"),
+        *_SYSTEM_CJK_CANDIDATES,
+    ]
+    for path, fmt in candidates:
+        if not path.exists():
+            continue
+        uri = _load_font_as_data_uri(path, fmt)
+        if uri:
+            logger.info("Font loaded for PDF: %s (%s)", path.name, fmt)
+            bold_uri = uri  # reuse regular as bold fallback
+            if _NOTO_BOLD_TTF.exists():
+                bold_data_uri = _load_font_as_data_uri(_NOTO_BOLD_TTF, "truetype")
+                if bold_data_uri:
+                    bold_uri = bold_data_uri
+            return (
+                f"@font-face {{ font-family: 'PDFJP'; "
+                f"src: url('{uri}') format('{fmt}'); font-weight: normal; }}\n"
+                f"@font-face {{ font-family: 'PDFJP'; "
+                f"src: url('{bold_uri}') format('{fmt}'); font-weight: bold; }}\n"
+                f"body, * {{ font-family: 'PDFJP', sans-serif !important; }}\n"
+            )
+    logger.warning("No CJK font found — PDF Japanese rendering may be broken")
+    return ""
 
 
-# ──────────────────────────────────────────────
-# WeasyPrint (Render.com Linux)
-# ──────────────────────────────────────────────
+# Cache at startup so we don't re-read the font file on every request
+_FONT_CSS: str = _build_font_css()
 
-def _inject_weasyprint_fonts(html: str) -> str:
-    if not _NOTO_REGULAR.exists():
+
+def _inject_font_css(html: str) -> str:
+    if not _FONT_CSS:
         return html
-    regular_uri = _NOTO_REGULAR.as_uri()
-    bold_uri    = _NOTO_BOLD.as_uri() if _NOTO_BOLD.exists() else regular_uri
-    font_css = f"""<style>
-@font-face {{ font-family: 'NotoSansJP'; src: url('{regular_uri}') format('truetype'); font-weight: normal; }}
-@font-face {{ font-family: 'NotoSansJP'; src: url('{bold_uri}') format('truetype'); font-weight: bold; }}
-body, * {{ font-family: 'NotoSansJP','Yu Gothic','Meiryo',sans-serif !important; }}
-</style>"""
+    style = f"<style>\n{_FONT_CSS}</style>"
     if "</head>" in html:
-        return html.replace("</head>", font_css + "\n</head>", 1)
-    return font_css + html
+        return html.replace("</head>", style + "\n</head>", 1)
+    return style + html
 
 
 def _blocked_url_fetcher(url, timeout=10, ssl_context=None):
@@ -76,10 +84,11 @@ def _blocked_url_fetcher(url, timeout=10, ssl_context=None):
         return default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
     raise URLFetchingError(f"外部URLフェッチをブロックしました: {url}")
 
+
 def _generate_with_weasyprint(html_content: str) -> bytes:
     from weasyprint import HTML, CSS
     return HTML(
-        string=_inject_weasyprint_fonts(html_content),
+        string=_inject_font_css(html_content),
         url_fetcher=_blocked_url_fetcher,
     ).write_pdf(
         stylesheets=[CSS(string=_PRINT_CSS)]
@@ -88,52 +97,48 @@ def _generate_with_weasyprint(html_content: str) -> bytes:
 
 # ──────────────────────────────────────────────
 # fpdf2 fallback (Windows dev environment)
-# CJK text requires Type0/CIDFontType2 embedding (Identity-H).
-# reportlab's TTFont uses single-byte sub-font splitting which causes
-# Chrome's PDF viewer to render Japanese characters as □ boxes.
-# fpdf2 embeds arbitrary TTF fonts as proper CIDFontType2 + Identity-H,
-# which all modern PDF viewers render correctly.
 # ──────────────────────────────────────────────
 
+def _get_cjk_ttf_for_fpdf() -> Path | None:
+    for path in [_NOTO_REGULAR_TTF, _EXTRACTED_TTF]:
+        if path.exists():
+            return path
+    for path, _ in _SYSTEM_CJK_CANDIDATES:
+        if path.exists():
+            return path
+    return None
+
+
 def _prepare_html_for_fpdf2(html: str) -> str:
-    """Extract body content and strip tags/attributes that fpdf2's parser can't handle."""
-    # Remove style/script blocks first
     html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
     html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    # Remove the entire <head> block (fpdf2 only needs body content)
     html = re.sub(r"<head[^>]*>.*?</head>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    # Extract <body> content if present, otherwise use the whole string
     body_m = re.search(r"<body[^>]*>(.*?)</body>", html, re.DOTALL | re.IGNORECASE)
     if body_m:
         html = body_m.group(1)
-    # Strip inline style/class/id attributes (fpdf2 ignores most of them anyway)
     html = re.sub(r'\s+(?:style|class|id)="[^"]*"', "", html, flags=re.IGNORECASE)
     html = re.sub(r"\s+(?:style|class|id)='[^']*'", "", html, flags=re.IGNORECASE)
     return html.strip()
 
 
-def _generate_with_reportlab(html_content: str) -> bytes:
-    """Generate PDF using fpdf2 with proper Unicode/CJK font embedding."""
+def _generate_with_fpdf2(html_content: str) -> bytes:
     import fpdf as fpdf2
 
-    ttf_path = _CJK_TTF
+    ttf_path = _get_cjk_ttf_for_fpdf()
 
     pdf = fpdf2.FPDF(format="A4")
     pdf.set_margins(left=15, top=12, right=15)
     pdf.set_auto_page_break(auto=True, margin=12)
 
     if ttf_path and ttf_path.exists():
-        # Register as CJK-capable font (fpdf2 embeds as Type0/CIDFontType2/Identity-H)
         pdf.add_font("CJK", fname=str(ttf_path))
         pdf.add_font("CJK", style="B", fname=str(ttf_path))
         pdf.set_font("CJK", size=10)
     else:
-        # Fallback to built-in Latin font (no CJK support)
         pdf.add_font = lambda *a, **kw: None  # type: ignore
         pdf.set_font("Helvetica", size=10)
 
     pdf.add_page()
-
     clean_html = _prepare_html_for_fpdf2(html_content)
 
     if not clean_html.strip():
@@ -158,5 +163,5 @@ def generate_pdf(html_content: str) -> bytes:
     try:
         return _generate_with_weasyprint(html_content)
     except Exception as e:
-        logger.warning("WeasyPrint failed (%s), falling back to reportlab", e)
-        return _generate_with_reportlab(html_content)
+        logger.warning("WeasyPrint failed (%s), falling back to fpdf2", e)
+        return _generate_with_fpdf2(html_content)

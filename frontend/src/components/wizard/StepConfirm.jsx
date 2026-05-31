@@ -1,5 +1,4 @@
 import React from 'react'
-import { DOC_TYPES } from '../../config/wizardConfig'
 
 function formatAnswer(step, answer) {
   if (answer === null || answer === undefined || answer === '') return '—'
@@ -19,29 +18,36 @@ function formatAnswer(step, answer) {
     return '—'
   }
 
+  if (step.type === 'select_multi') {
+    if (!answer || typeof answer !== 'object') return '—'
+    const parts = (step.fields || [])
+      .map((f) => {
+        const val = answer[f.key]
+        return val ? `${f.label}：${val}` : null
+      })
+      .filter(Boolean)
+    return parts.length > 0 ? parts.join('\n') : '—'
+  }
+
+  if (step.type === 'select' && step.options && step.options.length > 0 && typeof step.options[0] === 'object') {
+    const option = step.options.find((o) => o.value === answer)
+    return option?.label || answer || '—'
+  }
+
   return answer || '—'
 }
 
 export default function StepConfirm({ basicInfo, answers, steps, onSubmit, onBack, loading, error }) {
-  const docTypeLabel = DOC_TYPES.find((t) => t.value === basicInfo.doc_type)?.label ?? basicInfo.doc_type
-
-  const amountDisplay = basicInfo.amount
-    ? isNaN(Number(basicInfo.amount))
-      ? `${basicInfo.amount} 円`
-      : `¥${Number(basicInfo.amount).toLocaleString()}`
-    : '—'
-
   const basicRows = [
-    { label: '書類種別', value: docTypeLabel, multiline: false },
     { label: '顧客名', value: basicInfo.client_name || '—', multiline: false },
     { label: '自社名・担当者名', value: basicInfo.company_name || '—', multiline: false },
-    { label: '金額', value: amountDisplay, multiline: false },
+    { label: '金額', value: basicInfo.amount ? `¥${Number(basicInfo.amount).toLocaleString()}` : '—', multiline: false },
   ]
 
   const questionRows = steps.map((step, i) => ({
-    label: step.question,
+    label: step.label || step.question,
     value: formatAnswer(step, answers[i]),
-    multiline: step.type === 'line_items' || step.type === 'text',
+    multiline: step.type === 'line_items' || step.type === 'text' || step.type === 'select_multi',
   }))
 
   const rows = [...basicRows, ...questionRows]

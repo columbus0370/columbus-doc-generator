@@ -29,3 +29,18 @@ export async function downloadPdf(htmlContent) {
 
   return res.blob()
 }
+
+export async function generateEmail(payload) {
+  const res = await fetch(`${BASE_URL}/api/generate-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: '不明なエラー' }))
+    throw new Error(err.detail || 'メール生成に失敗しました')
+  }
+
+  return res.json()
+}

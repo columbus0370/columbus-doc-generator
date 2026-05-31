@@ -15,35 +15,38 @@ _SECURITY_CONSTRAINT = """
 _BASE_STYLE = """
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-x: auto; }
 body {
   font-family: 'Yu Gothic','Meiryo','Hiragino Sans','MS PGothic',sans-serif;
-  font-size: 12px; color: #222; background: #f0f2f5; padding: 24px 16px;
+  font-size: 12px; color: #222; background: #f0f2f5; padding: 20px 12px;
 }
 .doc {
   max-width: 800px; margin: 0 auto; background: #fff;
-  padding: 36px 40px; box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  padding: 28px 32px; box-shadow: 0 2px 12px rgba(0,0,0,.08);
 }
-h1 { font-size: 22px; color: #1a3a5c; }
-h2 { font-size: 14px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 4px; margin: 20px 0 10px; }
-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-th { background: #1a3a5c; color: #fff; padding: 7px 8px; font-size: 11px; text-align: center; }
-td { padding: 6px 8px; border-bottom: 1px solid #e0e5ec; font-size: 11px; }
+h1 { font-size: 20px; color: #1a3a5c; }
+h2 { font-size: 13px; color: #1a3a5c; border-bottom: 2px solid #1a3a5c; padding-bottom: 3px; margin: 16px 0 8px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; table-layout: fixed; }
+th { background: #1a3a5c; color: #fff; padding: 6px 4px; font-size: 11px; text-align: center; white-space: nowrap; }
+td { padding: 5px 6px; border-bottom: 1px solid #e0e5ec; font-size: 11px; word-break: break-word; vertical-align: top; }
+td.num { white-space: nowrap; text-align: right; overflow: hidden; }
 tr:nth-child(even) td { background: #f7f9fc; }
 .right { text-align: right; }
-.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; font-size: 13px; }
+.total-row td { font-weight: bold; background: #1a3a5c !important; color: #fff; white-space: nowrap; overflow: hidden; }
+.subtotal-row td { font-weight: bold; color: #1a3a5c; white-space: nowrap; overflow: hidden; }
 .label { color: #555; font-size: 11px; }
 .accent { color: #1a3a5c; font-weight: bold; }
-.divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 16px 0; }
-.doc-logo-area { min-height: 0; margin-bottom: 8px; }
+.divider { height: 2px; background: linear-gradient(to right, #1a3a5c, #4a90d9, transparent); margin: 12px 0; }
+.doc-logo-area { min-height: 0; margin-bottom: 6px; }
 .doc-logo { max-height: 60px; max-width: 200px; object-fit: contain; display: block; }
+@page { size: A4; margin: 0; }
 @media print {
-  body { background: #fff; padding: 0; }
-  .doc { box-shadow: none; padding: 15mm 20mm; }
+  html, body { overflow: visible; background: #fff; padding: 0; font-size: 11px; }
+  .doc { box-shadow: none; padding: 8mm 12mm; max-width: 100%; }
+  h2 { margin: 10px 0 5px; }
+  .divider { margin: 8px 0; }
+  table { margin: 6px 0; }
   .no-print { display: none; }
-}
-@media (max-width: 600px) {
-  .doc { padding: 20px 16px; }
-  .two-col { flex-direction: column; }
 }
 </style>
 """
@@ -55,103 +58,45 @@ _ESTIMATE_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成する�
 {_BASE_STYLE}
 
 ## 見積書の構成
-1. ヘッダー: 左=会社名ブロック（#1a3a5c背景・白文字）、右=「御 見 積 書」（20px bold・letter-spacing:4px）＋発行日・見積番号・有効期限。ヘッダー左ブロックの最上部に `<div class="doc-logo-area"></div>` を空で配置すること。
+1. ヘッダー: 左=会社名ブロック（#1a3a5c背景・白文字）、右=「御 見 積 書」（20px bold・letter-spacing:4px）＋発行日・見積番号（EST-{{YYYYMMDD}}-001形式）・有効期限（発行日の30日後）。ヘッダー左ブロックの最上部に `<div class="doc-logo-area"></div>` を空で配置すること。
 2. 区切り線（.divider）
-3. 2カラム: 左=宛先（会社名・担当者）、右=発行者（会社名・住所・TEL・担当者）
-4. 御見積金額ボックス: 背景#f0f4f9・border #1a3a5c、左=件名、右=合計金額（20px bold）
-5. 明細テーブル: 品名 / 摘要 / 数量 / 単位 / 単価 / 金額 / 税率（列幅はcolgroup指定）
-6. 合計欄（右寄せ）: 小計・消費税10%・合計（.total-row）
-7. 備考欄: 納期・支払条件・特記事項
+3. 2カラム: 左=宛先（会社名・担当者）、右=発行者（会社名・住所・TEL・担当者。発行者情報にインボイス登録番号がある場合はここに記載）
+4. 御見積金額ボックス: 背景#f0f4f9・border #1a3a5c、左=件名、右=合計金額（税込・20px bold）
+5. 明細テーブル: 必ず以下の colgroup で列幅を固定すること（table-layout:fixed 前提）
+   <colgroup><col style="width:20%"><col style="width:32%"><col style="width:8%"><col style="width:8%"><col style="width:16%"><col style="width:16%"></colgroup>
+   列ヘッダー(th): 品名 / 作業内容・仕様 / 数量 / 単位 / 単価 / 金額
+   - 数量・単位・単価・金額の td は class="num" を付けること（右寄せ・折り返し禁止）
+6. 合計欄: 必ず以下の構造で生成すること（6列テーブルの colspan="5" + 金額1列）
+   <tr class="subtotal-row"><td colspan="5" class="right">小計</td><td class="num">¥XX,XXX</td></tr>
+   <tr class="subtotal-row"><td colspan="5" class="right">消費税（10%）</td><td class="num">¥X,XXX</td></tr>
+   <tr class="total-row"><td colspan="5" class="right">合計金額（税込）</td><td class="num">¥XX,XXX</td></tr>
+7. 備考欄（h2）: 以下を必ず含める
+   - 修正対応回数（入力値を反映。例「修正2回まで含む」）
+   - 「上記明細に記載のない作業は別途お見積りとなります」
+   - 「仕様変更・追加要件が発生した場合は別途ご相談させてください」
+   - 納期・支払条件
+8. 振込先セクション（h2「お振込先」）: 発行者情報に振込先がある場合のみ追加。銀行名・支店名・口座種別・口座番号・口座名義を記載
 
 ## 出力ルール
 - <!DOCTYPE html> から </html> まで完全な1ファイルのHTML
 - 外部CSSライブラリ不可。JSは不要（静的HTML）
 - コードブロック記法（```）不要。HTMLをそのまま出力
 - 業務内容から明細行を推定し、合計が入力金額に近くなるよう構成すること
+- 発行者情報に「適格請求書発行事業者登録番号：T...」が含まれる場合は発行者欄に記載すること
+- 発行者情報に「振込先：...」が含まれる場合は備考欄の下に振込先セクションを追加すること
 {_SECURITY_CONSTRAINT}"""
 
-_PROPOSAL_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成するアシスタントです。
-ユーザーの情報から「提案書」の完全な1ページHTMLを生成してください。
-
-## 共通スタイル（必ず <head> に含めること）
-{_BASE_STYLE}
-
-## 提案書の構成（スクロール1ページ、セクション区切りで表示）
-1. カバーブロック: background #1a3a5c・白文字・padding 32px、提案タイトル（22px）・提案先・日付・担当者。ブロック内の先頭に `<div class="doc-logo-area"></div>` を空で配置すること。
-2. エグゼクティブサマリー: 2〜3文の概要テキスト
-3. 課題セクション（h2）: 2〜3件のカード（border-left:3px solid #e53935）、タイトル＋説明文
-4. 解決策セクション（h2）: 2〜3件のカード（border-left:3px solid #1a3a5c）、ステップ番号＋タイトル＋説明
-5. 費用・スケジュールセクション（h2）: 費用概算テーブル＋想定スケジュール（3〜4行）
-6. お問い合わせ欄: 担当者・TEL・Email・会社名
-
-## 出力ルール
-- <!DOCTYPE html> から </html> まで完全な1ファイルのHTML
-- 外部ライブラリ不可。JSは不要（静的HTML）
-- コードブロック記法（```）不要。HTMLをそのまま出力
-- 提案内容から課題・解決策・スケジュールを論理的に補完すること
-{_SECURITY_CONSTRAINT}"""
-
-_REPORT_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成するアシスタントです。
-ユーザーの情報から「月次業務レポート」の完全なHTMLを生成してください。
-
-## 共通スタイル（必ず <head> に含めること）
-{_BASE_STYLE}
-
-## レポートの構成
-1. ヘッダー: background #1a3a5c・白文字、「業務月次レポート」タイトル＋対象期間、右側に作成者・提出先・作成日。ヘッダー内の先頭に `<div class="doc-logo-area"></div>` を空で配置すること。
-2. KPI 4指標: 横並びボックス（各 background:#f0f4f9、数値18px bold #1a3a5c、前月比バッジ）
-3. 売上推移サマリー: シンプルなテーブル（月 / 実績 / 目標 / 達成率 の6ヶ月分）
-4. プロジェクト進捗テーブル: プロジェクト名 / 担当 / 期限 / 進捗(CSSバー) / 状況 / 備考
-   - 進捗バー: <div style="background:#e0e7ef;height:6px"><div style="background:#1a3a5c;width:{{n}}%;height:6px"></div></div>
-5. 課題・リスク: 優先度（高=赤・中=橙・低=緑）付きの箇条書きテーブル
-6. 来月の目標と施策: 売上目標＋番号付きアクションリスト
-
-## 出力ルール
-- <!DOCTYPE html> から </html> まで完全な1ファイルのHTML
-- 外部ライブラリ不可（Chart.jsも使わない）。JSは不要（静的HTML）
-- コードブロック記法（```）不要。HTMLをそのまま出力
-- レポート内容からKPI・プロジェクト・課題・施策を適切に補完すること
-- 必ず </html> まで出力を完結させること（途中で切れないようコンパクトにまとめる）
-{_SECURITY_CONSTRAINT}"""
-
-_SYSTEM_PROMPTS = {
-    "estimate": _ESTIMATE_SYSTEM,
-    "proposal": _PROPOSAL_SYSTEM,
-    "report":   _REPORT_SYSTEM,
-}
-
-_USER_PROMPTS = {
-    "estimate": """以下の情報から「御見積書」HTMLを生成してください。
+_USER_PROMPT_ESTIMATE = """以下の情報から「御見積書」HTMLを生成してください。
 
 会社名（発行者）: {company_name}
 顧客名（宛先）: {client_name}
 発行日: {today}
 業務内容・件名: {content}
 金額目安: {amount}円
-備考: {notes}""",
-
-    "proposal": """以下の情報から「提案書」HTMLを生成してください。
-
-会社名（発行者）: {company_name}
-提案先: {client_name}
-提案日: {today}
-提案内容・背景: {content}
-費用感: {amount}円
-備考: {notes}""",
-
-    "report": """以下の情報から「月次業務レポート」HTMLを生成してください。
-
-作成者（部署・担当）: {company_name}
-提出先: {client_name}
-作成日: {today}
-レポート内容・期間・主要トピック: {content}
-備考: {notes}""",
-}
+備考: {notes}"""
 
 TITLES = {
     "estimate": "見積書",
-    "proposal": "提案書",
-    "report":   "業務レポート",
 }
 
 
@@ -183,12 +128,11 @@ def generate_document(
     amount: str,
     notes: str,
 ) -> dict:
-    system_prompt = _SYSTEM_PROMPTS.get(doc_type)
-    if not system_prompt:
+    if doc_type != "estimate":
         raise ValueError(f"Unknown doc_type: {doc_type}")
 
     today = date.today().strftime("%Y年%m月%d日")
-    user_prompt = _USER_PROMPTS[doc_type].format(
+    user_prompt = _USER_PROMPT_ESTIMATE.format(
         client_name=client_name,
         company_name=company_name or "（自社名未入力）",
         content=content,
@@ -203,7 +147,7 @@ def generate_document(
         system=[
             {
                 "type": "text",
-                "text": system_prompt,
+                "text": _ESTIMATE_SYSTEM,
                 "cache_control": {"type": "ephemeral"},
             }
         ],
@@ -221,3 +165,58 @@ def generate_document(
         "generated_text": generated_html,
         "title": TITLES.get(doc_type, "文書"),
     }
+
+
+def generate_email_body(
+    client_name: str,
+    company_name: str,
+    work_type: str,
+    total_amount: str,
+    deadline: str,
+) -> dict:
+    prompt = f"""以下の情報を元に、フリーランスがクライアントに見積書を送付するメールの文面を作成してください。
+
+【宛先】{client_name} 様
+【送信者（自社）】{company_name}
+【業務種別】{work_type}
+【見積金額】{total_amount}円（税込）
+【納期】{deadline}
+
+条件：
+- 件名も含めて出力すること
+- ビジネスメールとして適切な丁寧さ
+- 本文は200〜300文字程度
+- 末尾に「別途ご不明点はお気軽にご連絡ください」を含める
+- HTMLやマークダウンは使わず、プレーンテキストで出力
+
+出力形式：
+件名：[件名]
+
+[本文]
+"""
+
+    message = _get_client().messages.create(
+        model="claude-opus-4-7",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    if not message.content:
+        raise RuntimeError("Claude API returned empty content")
+    text_block = next((b for b in message.content if b.type == "text"), None)
+    if text_block is None:
+        raise RuntimeError("Claude API returned no text content")
+
+    raw = text_block.text.strip()
+
+    # Parse subject and body from the response
+    subject = ""
+    body = raw
+    lines = raw.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith("件名：") or line.startswith("件名:"):
+            subject = line.split("：", 1)[-1].split(":", 1)[-1].strip()
+            body = "\n".join(lines[i + 1 :]).strip()
+            break
+
+    return {"subject": subject, "body": body}

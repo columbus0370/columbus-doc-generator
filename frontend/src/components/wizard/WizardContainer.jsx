@@ -15,23 +15,22 @@ const makeInitialBasicInfo = (profile) => ({
   amount: '',
 })
 
-export default function WizardContainer({ onGenerate, loading, error, profile }) {
+export default function WizardContainer({ onGenerate, loading, error, profile, initialData }) {
   const [currentStep, setCurrentStep] = React.useState(0)
-  const [basicInfo, setBasicInfo] = React.useState(() => makeInitialBasicInfo(profile))
+  const [basicInfo, setBasicInfo] = React.useState(
+    () => initialData?.basicInfo ?? makeInitialBasicInfo(profile)
+  )
 
   const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
   // Step0 = 基本情報, Steps 1..N = questions, Step N+1 = 確認
   const totalSteps = steps.length + 2
 
-  const [answers, setAnswers] = React.useState(() => new Array(steps.length).fill(null))
+  const [answers, setAnswers] = React.useState(
+    () => initialData?.answers ?? new Array(steps.length).fill(null)
+  )
 
   const handleBasicChange = (field, value) => {
     setBasicInfo((prev) => ({ ...prev, [field]: value }))
-    if (field === 'doc_type') {
-      const newSteps = WIZARD_STEPS[value] ?? []
-      setAnswers(new Array(newSteps.length).fill(null))
-      setCurrentStep(0)
-    }
   }
 
   const handleAnswerChange = (stepIdx, value) => {
@@ -47,11 +46,11 @@ export default function WizardContainer({ onGenerate, loading, error, profile })
 
   const handleSubmit = () => {
     const content = buildContent(basicInfo.doc_type, answers)
-    // Use full profile (name + address + tel + email) if available, otherwise wizard input
     const companyName =
       profile?.business_name && basicInfo.company_name === profile.business_name
         ? formatProfileForPrompt(profile)
         : basicInfo.company_name
+
     onGenerate({
       doc_type: basicInfo.doc_type,
       client_name: basicInfo.client_name,
@@ -59,6 +58,13 @@ export default function WizardContainer({ onGenerate, loading, error, profile })
       content,
       amount: basicInfo.amount,
       notes: '',
+      _wizard: {
+        work_type: answers[0],
+        work_detail: answers[1],
+        line_items: answers[2],
+        conditions: answers[3],
+      },
+      _basicInfo: basicInfo,
     })
   }
 
@@ -91,13 +97,14 @@ export default function WizardContainer({ onGenerate, loading, error, profile })
     if (stepDef.type === 'line_items') {
       return (
         <StepLineItems
-          question={stepDef.question}
+          question={stepDef.label || stepDef.question}
           value={answers[stepIdx]}
           onChange={(val) => handleAnswerChange(stepIdx, val)}
           onNext={goNext}
           onBack={goBack}
           stepIndex={currentStep}
           totalSteps={questionCount}
+          workType={answers[0]}
         />
       )
     }
@@ -105,7 +112,7 @@ export default function WizardContainer({ onGenerate, loading, error, profile })
     if (stepDef.type === 'text') {
       return (
         <StepTextInput
-          question={stepDef.question}
+          question={stepDef.label || stepDef.question}
           placeholder={stepDef.placeholder}
           value={answers[stepIdx]}
           onChange={(val) => handleAnswerChange(stepIdx, val)}
@@ -117,12 +124,28 @@ export default function WizardContainer({ onGenerate, loading, error, profile })
       )
     }
 
+    if (stepDef.type === 'select_multi') {
+      return (
+        <StepQuestion
+          stepIndex={currentStep}
+          totalSteps={questionCount}
+          question={stepDef.label}
+          type="select_multi"
+          fields={stepDef.fields}
+          selected={answers[stepIdx]}
+          onSelect={(val) => handleAnswerChange(stepIdx, val)}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )
+    }
+
     // default: select
     return (
       <StepQuestion
         stepIndex={currentStep}
         totalSteps={questionCount}
-        question={stepDef.question}
+        question={stepDef.label || stepDef.question}
         options={stepDef.options}
         selected={answers[stepIdx]}
         onSelect={(val) => handleAnswerChange(stepIdx, val)}

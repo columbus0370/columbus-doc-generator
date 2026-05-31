@@ -10,6 +10,12 @@ export const EMPTY_PROFILE = {
   tel: '',
   email: '',
   logo_data_url: '',
+  invoice_number: '',
+  bank_name: '',
+  bank_branch: '',
+  bank_type: '普通',
+  bank_number: '',
+  bank_holder: '',
 }
 
 export function useBusinessProfile() {
@@ -38,7 +44,7 @@ export function useBusinessProfile() {
 /** プロフィールを Claude に渡す company_name 形式にフォーマットする */
 export function formatProfileForPrompt(profile) {
   if (!profile || !profile.business_name) return ''
-  const lines = [
+  const parts = [
     profile.business_name,
     profile.contact_name ? `担当: ${profile.contact_name}` : null,
     profile.zip && profile.address
@@ -47,5 +53,20 @@ export function formatProfileForPrompt(profile) {
     profile.tel ? `TEL: ${profile.tel}` : null,
     profile.email ? `E-mail: ${profile.email}` : null,
   ]
-  return lines.filter(Boolean).join('\n')
+  if (profile.invoice_number) {
+    parts.push(`適格請求書発行事業者登録番号：${profile.invoice_number}`)
+  }
+  if (profile.bank_name) {
+    const bankInfo = [
+      profile.bank_name,
+      profile.bank_branch,
+      profile.bank_type,
+      profile.bank_number,
+      profile.bank_holder,
+    ]
+      .filter(Boolean)
+      .join(' ')
+    parts.push(`振込先：${bankInfo}`)
+  }
+  return parts.filter(Boolean).join('\n')
 }
