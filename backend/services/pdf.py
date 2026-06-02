@@ -17,7 +17,7 @@ _SYSTEM_CJK_CANDIDATES: list[tuple[Path, str]] = [
 ]
 
 _PRINT_CSS = """
-@page { size: A4; margin: 12mm 15mm; }
+@page { size: A4; margin: 20mm 25mm; }
 body { background: white !important; padding: 0 !important; }
 .no-print, .toolbar, nav, button { display: none !important; }
 .doc { box-shadow: none !important; padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
@@ -68,13 +68,15 @@ def _build_font_css() -> str:
 _FONT_CSS: str = _build_font_css()
 
 
-def _inject_font_css(html: str) -> str:
-    if not _FONT_CSS:
-        return html
-    style = f"<style>\n{_FONT_CSS}</style>"
+def _inject_styles(html: str) -> str:
+    parts = []
+    if _FONT_CSS:
+        parts.append(_FONT_CSS)
+    parts.append(_PRINT_CSS)
+    combined = "<style>\n" + "\n".join(parts) + "</style>"
     if "</head>" in html:
-        return html.replace("</head>", style + "\n</head>", 1)
-    return style + html
+        return html.replace("</head>", combined + "\n</head>", 1)
+    return combined + html
 
 
 def _blocked_url_fetcher(url, timeout=10, ssl_context=None):
@@ -86,13 +88,11 @@ def _blocked_url_fetcher(url, timeout=10, ssl_context=None):
 
 
 def _generate_with_weasyprint(html_content: str) -> bytes:
-    from weasyprint import HTML, CSS
+    from weasyprint import HTML
     return HTML(
-        string=_inject_font_css(html_content),
+        string=_inject_styles(html_content),
         url_fetcher=_blocked_url_fetcher,
-    ).write_pdf(
-        stylesheets=[CSS(string=_PRINT_CSS)]
-    )
+    ).write_pdf()
 
 
 # ──────────────────────────────────────────────
