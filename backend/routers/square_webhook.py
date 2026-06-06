@@ -26,6 +26,26 @@ def _verify_square_signature(body: bytes, signature: str, key: str, notification
     return hmac.compare_digest(expected, signature)
 
 
+def _extract_buyer_email(payload: dict, event_type: str) -> str:
+    obj = payload.get("data", {}).get("object", {})
+    # payment.completed
+    email = obj.get("payment", {}).get("buyer_email_address", "")
+    if email:
+        return email
+    # invoice.payment_made
+    email = obj.get("invoice", {}).get("primary_recipient", {}).get("email_address", "")
+    if email:
+        return email
+    # その他のネスト構造を広く探す
+    for key in obj:
+        candidate = obj[key]
+        if isinstance(candidate, dict):
+            email = candidate.get("buyer_email_address", "") or candidate.get("email_address", "")
+            if email:
+                return email
+    return ""
+
+
 def _generate_access_key() -> str:
     return "key_" + secrets.token_urlsafe(16)
 
@@ -84,21 +104,22 @@ async def square_webhook(request: Request):
         return Response(status_code=200)
 
     event_type = payload.get("type", "")
+    logger.info("Square webhook received: type=%s", event_type)
+    logger.info("Square webhook payload: %s", json.dumps(payload, ensure_ascii=False)[:1000])
 
-    if event_type == "payment.completed":
-        payment = payload.get("data", {}).get("object", {}).get("payment", {})
-        buyer_email = payment.get("buyer_email_address", "")
+    buyer_email = _extract_buyer_email(payload, event_type)
+    logger.info("Extracted buyer_email: %s", buyer_email or "(none)")
 
-        if buyer_email:
-            access_key = _generate_access_key()
-            _runtime_keys.add(access_key)
-            logger.info("New access key issued for %s", buyer_email)
+    if event_type in ("payment.completed", "invoice.payment_made") and buyer_email:
+        access_key = _generate_access_key()
+        _runtime_keys.add(access_key)
+        logger.info("New access key issued for %s", buyer_email)
 
-            try:
-                _send_access_key_email(buyer_email, access_key)
-                logger.info("Access key email sent to %s", buyer_email)
-            except Exception as e:
-                logger.exception("Failed to send access key email: %s", e)
+        try:
+            _send_access_key_email(buyer_email, access_key)
+            logger.info("Access key email sent to %s", buyer_email)
+        except Exception as e:
+            logger.exception("Failed to send access key email: %s", e)
 
     return Response(status_code=200)
 
