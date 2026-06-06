@@ -110,7 +110,14 @@ async def square_webhook(request: Request):
     buyer_email = _extract_buyer_email(payload, event_type)
     logger.info("Extracted buyer_email: %s", buyer_email or "(none)")
 
-    if event_type in ("payment.completed", "invoice.payment_made") and buyer_email:
+    # payment.updated は COMPLETED になった時のみ処理
+    if event_type == "payment.updated":
+        status = payload.get("data", {}).get("object", {}).get("payment", {}).get("status", "")
+        logger.info("payment.updated status: %s", status)
+        if status != "COMPLETED":
+            return Response(status_code=200)
+
+    if event_type in ("payment.completed", "payment.updated", "invoice.payment_made") and buyer_email:
         access_key = _generate_access_key()
         _runtime_keys.add(access_key)
         logger.info("New access key issued for %s", buyer_email)
