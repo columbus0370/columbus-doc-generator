@@ -15,6 +15,7 @@ const makeInitialBasicInfo = (profile) => ({
   client_name: '',
   company_name: profile?.business_name ?? '',
   amount: '',
+  tax_type: 'exclusive',
 })
 
 export default function WizardContainer({ onGenerate, loading, error, profile, initialData }) {
@@ -54,7 +55,7 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
       return
     }
 
-    const content = buildContent(basicInfo.doc_type, answers)
+    const content = buildContent(basicInfo.doc_type, answers, { tax_type: basicInfo.tax_type ?? 'exclusive' })
     const companyName =
       profile?.business_name && basicInfo.company_name === profile.business_name
         ? formatProfileForPrompt(profile)

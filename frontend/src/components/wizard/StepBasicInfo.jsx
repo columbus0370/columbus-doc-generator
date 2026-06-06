@@ -61,6 +61,25 @@ export default function StepBasicInfo({ data, onChange, onNext, profile }) {
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">円</span>
         </div>
+        <div className="flex items-center gap-4 mt-2">
+          <span className="text-xs text-gray-500">明細単価の税区分：</span>
+          {[
+            { value: 'exclusive', label: '税抜' },
+            { value: 'inclusive', label: '税込' },
+          ].map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="tax_type"
+                value={value}
+                checked={(data.tax_type ?? 'exclusive') === value}
+                onChange={() => onChange('tax_type', value)}
+                className="accent-accent w-3.5 h-3.5"
+              />
+              <span className="text-sm text-gray-300">{label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="flex justify-end pt-2">

@@ -110,7 +110,8 @@ export const PRICE_GUIDE = {
  * @param {Array} answers
  * @returns {string}
  */
-export function buildContent(docType, answers) {
+export function buildContent(docType, answers, options = {}) {
+  const { tax_type = 'exclusive' } = options
   switch (docType) {
     case 'estimate': {
       const [work_type, work_detail, lineItems, conditions] = answers
@@ -134,10 +135,15 @@ export function buildContent(docType, answers) {
         }
       }
 
+      const taxInstruction = tax_type === 'inclusive'
+        ? '税区分：税込入力（明細の単価・金額はすべて税込金額です。消費税は合計金額÷1.1×0.1で逆算し端数切り捨てで内税表示してください。合計欄の「消費税（10%）」行は「消費税（10%内税）」と表記してください）'
+        : '税区分：税抜入力（明細の単価・金額は税抜金額です。消費税は各行ではなく小計合計に10%を一括で掛けて端数切り捨てで計算してください）'
+
       return [
         `業務種別：${workTypeLabel}`,
         work_detail ? `作業内容：${work_detail}` : '',
         lineItemsSection,
+        taxInstruction,
         conditions?.deadline ? `納期：${conditions.deadline}` : '',
         conditions?.payment ? `支払条件：${conditions.payment}` : '',
         conditions?.revision ? `修正対応：${conditions.revision}` : '',
