@@ -6,17 +6,22 @@ import secrets
 import json
 import logging
 import httpx
-from fastapi import APIRouter, Request, Response
+from datetime import datetime, timezone
+from fastapi import APIRouter, Request, Response, HTTPException
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# インメモリのキーセット（Render.com再起動でリセットされるため、VALID_ACCESS_KEYSと併用）
-_runtime_keys: set[str] = set()
+# 発行済みキーの履歴（メモリ保持。再起動でリセットされるが VALID_ACCESS_KEYS で永続化可能）
+_issued_keys: list[dict] = []
+
+
+def _runtime_key_set() -> set[str]:
+    return {r["key"] for r in _issued_keys}
 
 
 def _verify_square_signature(body: bytes, signature: str, key: str, notification_url: str) -> bool:
-    # Square は notification_url + raw_body を結合してHMAC-SHA256を計算する
+    # Square は notification_url + raw_body を結合して HMAC-SHA256 を計算する
     payload = notification_url.encode() + body
     expected = base64.b64encode(
         hmac.new(key.encode(), payload, hashlib.sha256).digest()
@@ -24,9 +29,9 @@ def _verify_square_signature(body: bytes, signature: str, key: str, notification
     return hmac.compare_digest(expected, signature)
 
 
-def _extract_buyer_email(payload: dict, event_type: str) -> str:
+def _extract_buyer_email(payload: dict) -> str:
     obj = payload.get("data", {}).get("object", {})
-    # payment.completed
+    # payment.completed / payment.updated
     email = obj.get("payment", {}).get("buyer_email_address", "")
     if email:
         return email
@@ -34,11 +39,10 @@ def _extract_buyer_email(payload: dict, event_type: str) -> str:
     email = obj.get("invoice", {}).get("primary_recipient", {}).get("email_address", "")
     if email:
         return email
-    # その他のネスト構造を広く探す
-    for key in obj:
-        candidate = obj[key]
-        if isinstance(candidate, dict):
-            email = candidate.get("buyer_email_address", "") or candidate.get("email_address", "")
+    # 広く探す
+    for val in obj.values():
+        if isinstance(val, dict):
+            email = val.get("buyer_email_address", "") or val.get("email_address", "")
             if email:
                 return email
     return ""
@@ -98,31 +102,66 @@ async def square_webhook(request: Request):
 
     event_type = payload.get("type", "")
     logger.info("Square webhook received: type=%s", event_type)
-    logger.info("Square webhook payload: %s", json.dumps(payload, ensure_ascii=False)[:1000])
 
-    buyer_email = _extract_buyer_email(payload, event_type)
-    logger.info("Extracted buyer_email: %s", buyer_email or "(none)")
-
-    # payment.updated は COMPLETED になった時のみ処理
+    # payment.updated は COMPLETED のみ処理
     if event_type == "payment.updated":
         status = payload.get("data", {}).get("object", {}).get("payment", {}).get("status", "")
         logger.info("payment.updated status: %s", status)
         if status != "COMPLETED":
             return Response(status_code=200)
 
-    if event_type in ("payment.completed", "payment.updated", "invoice.payment_made") and buyer_email:
-        access_key = _generate_access_key()
-        _runtime_keys.add(access_key)
-        logger.info("New access key issued for %s", buyer_email)
+    if event_type not in ("payment.completed", "payment.updated", "invoice.payment_made"):
+        return Response(status_code=200)
 
-        try:
-            _send_access_key_email(buyer_email, access_key)
-            logger.info("Access key email sent to %s", buyer_email)
-        except Exception as e:
-            logger.exception("Failed to send access key email: %s", e)
+    buyer_email = _extract_buyer_email(payload)
+    logger.info("Extracted buyer_email: %s", buyer_email or "(none)")
+
+    if not buyer_email:
+        return Response(status_code=200)
+
+    access_key = _generate_access_key()
+    _issued_keys.append({
+        "key": access_key,
+        "email": buyer_email,
+        "issued_at": datetime.now(timezone.utc).isoformat(),
+        "email_sent": False,
+    })
+    logger.info("ACCESS KEY ISSUED — email=%s key=%s", buyer_email, access_key)
+
+    try:
+        _send_access_key_email(buyer_email, access_key)
+        _issued_keys[-1]["email_sent"] = True
+        logger.info("Access key email sent to %s", buyer_email)
+    except Exception as e:
+        logger.exception("Failed to send access key email: %s", e)
+        logger.warning("ACTION REQUIRED: manually send key=%s to email=%s", access_key, buyer_email)
 
     return Response(status_code=200)
 
 
+@router.get("/admin/keys")
+async def admin_list_keys(request: Request):
+    """発行済みアクセスキー一覧（ADMIN_SECRET ヘッダーまたはクエリパラメータで認証）"""
+    admin_secret = os.environ.get("ADMIN_SECRET", "")
+    if not admin_secret:
+        raise HTTPException(status_code=503, detail="ADMIN_SECRET not configured")
+
+    token = request.headers.get("X-Admin-Secret") or request.query_params.get("secret", "")
+    if not hmac.compare_digest(token, admin_secret):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    static_keys = [
+        k.strip()
+        for k in os.environ.get("VALID_ACCESS_KEYS", "").split(",")
+        if k.strip()
+    ]
+
+    return {
+        "issued": _issued_keys,
+        "static_keys": static_keys,
+        "total_runtime": len(_issued_keys),
+    }
+
+
 def get_runtime_keys() -> set[str]:
-    return _runtime_keys
+    return _runtime_key_set()
