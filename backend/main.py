@@ -13,6 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from limiter import limiter
 from routers.generate import router
+from routers import access_key, square_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(router)
+app.include_router(access_key.router, prefix="/api", tags=["access_key"])
+app.include_router(square_webhook.router, prefix="/api", tags=["square"])
 
 
 @app.get("/health")
