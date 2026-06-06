@@ -17,9 +17,11 @@ logger = logging.getLogger(__name__)
 _runtime_keys: set[str] = set()
 
 
-def _verify_square_signature(body: bytes, signature: str, key: str) -> bool:
+def _verify_square_signature(body: bytes, signature: str, key: str, notification_url: str) -> bool:
+    # Square は notification_url + raw_body を結合してHMAC-SHA256を計算する
+    payload = notification_url.encode() + body
     expected = base64.b64encode(
-        hmac.new(key.encode(), body, hashlib.sha256).digest()
+        hmac.new(key.encode(), payload, hashlib.sha256).digest()
     ).decode()
     return hmac.compare_digest(expected, signature)
 
@@ -71,7 +73,8 @@ async def square_webhook(request: Request):
     signature = request.headers.get("X-Square-Hmacsha256-Signature", "")
     sig_key = os.environ.get("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
-    if sig_key and not _verify_square_signature(body, signature, sig_key):
+    notification_url = str(request.url)
+    if sig_key and not _verify_square_signature(body, signature, sig_key, notification_url):
         logger.warning("Square webhook signature verification failed")
         return Response(status_code=400)
 
