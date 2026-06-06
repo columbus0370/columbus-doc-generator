@@ -1,7 +1,7 @@
 import React from 'react'
 import { WIZARD_STEPS, buildContent } from '../../config/wizardConfig'
 import { formatProfileForPrompt } from '../../hooks/useBusinessProfile'
-import { getUsage, increment } from '../../hooks/useUsageLimit'
+import { getUsage } from '../../hooks/useUsageLimit'
 import WizardProgress from './WizardProgress'
 import StepBasicInfo from './StepBasicInfo'
 import StepQuestion from './StepQuestion'
@@ -24,20 +24,6 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
   )
   const [showLimitModal, setShowLimitModal] = React.useState(false)
   const [usage, setUsage] = React.useState(() => getUsage())
-
-  const submittedRef = React.useRef(false)
-  const prevLoadingRef = React.useRef(false)
-
-  React.useEffect(() => {
-    if (prevLoadingRef.current && !loading && submittedRef.current) {
-      if (!error) {
-        increment()
-        setUsage(getUsage())
-      }
-      submittedRef.current = false
-    }
-    prevLoadingRef.current = loading
-  }, [loading, error])
 
   const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
   const totalSteps = steps.length + 2
@@ -67,8 +53,6 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
       setShowLimitModal(true)
       return
     }
-
-    submittedRef.current = true
 
     const content = buildContent(basicInfo.doc_type, answers)
     const companyName =

@@ -9,6 +9,7 @@ import { useBusinessProfile } from './hooks/useBusinessProfile'
 import { useEstimateHistory } from './hooks/useEstimateHistory'
 import { injectLogo } from './utils/logoInjector'
 import { WIZARD_STEPS } from './config/wizardConfig'
+import { increment } from './hooks/useUsageLimit'
 
 function formatJpDate(isoString) {
   const d = new Date(isoString)
@@ -77,6 +78,7 @@ export default function App() {
         work_type_label: workTypeLabel,
         total_amount: totalAmount,
       }
+      increment()
       setResult(resultData)
 
       saveEstimate({
