@@ -11,9 +11,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from limiter import limiter
 from routers.generate import router
 from routers import access_key, square_webhook
 
@@ -25,9 +22,6 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS ────────────────────────────────────────────────────────────────────
 _env = os.environ.get("ENV", "development")

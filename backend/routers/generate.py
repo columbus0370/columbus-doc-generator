@@ -1,10 +1,9 @@
 import re
 import logging
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
-from limiter import limiter
 from services.claude import generate_document, generate_email_body
 from services.pdf import generate_pdf
 
@@ -46,8 +45,7 @@ class EmailRequest(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateResponse)
-@limiter.limit("10/minute")
-async def generate(request: Request, req: GenerateRequest):
+async def generate(req: GenerateRequest):
     if req.doc_type not in ["estimate"]:
         raise HTTPException(status_code=400, detail="Invalid doc_type")
     if not req.client_name.strip():
@@ -78,8 +76,7 @@ async def generate(request: Request, req: GenerateRequest):
 
 
 @router.post("/download-pdf")
-@limiter.limit("20/minute")
-async def download_pdf(request: Request, req: PdfRequest):
+async def download_pdf(req: PdfRequest):
     if not req.html_content.strip():
         raise HTTPException(status_code=400, detail="html_content is required")
 
@@ -96,8 +93,7 @@ async def download_pdf(request: Request, req: PdfRequest):
 
 
 @router.post("/generate-email")
-@limiter.limit("10/minute")
-async def generate_email(request: Request, req: EmailRequest):
+async def generate_email(req: EmailRequest):
     try:
         result = await run_in_threadpool(
             generate_email_body,
