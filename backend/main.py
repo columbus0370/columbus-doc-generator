@@ -12,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from routers.generate import router
-from routers import access_key, square_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +66,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(router)
-app.include_router(access_key.router, prefix="/api", tags=["access_key"])
-app.include_router(square_webhook.router, prefix="/api", tags=["square"])
 
 
 @app.get("/health")

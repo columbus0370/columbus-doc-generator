@@ -1,14 +1,12 @@
 import React from 'react'
 import { WIZARD_STEPS, buildContent } from '../../config/wizardConfig'
 import { formatProfileForPrompt } from '../../hooks/useBusinessProfile'
-import { getUsage } from '../../hooks/useUsageLimit'
 import WizardProgress from './WizardProgress'
 import StepBasicInfo from './StepBasicInfo'
 import StepQuestion from './StepQuestion'
 import StepLineItems from './StepLineItems'
 import StepTextInput from './StepTextInput'
 import StepConfirm from './StepConfirm'
-import UsageLimitModal from '../UsageLimitModal'
 
 const makeInitialBasicInfo = (profile) => ({
   doc_type: 'estimate',
@@ -23,9 +21,6 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
   const [basicInfo, setBasicInfo] = React.useState(
     () => initialData?.basicInfo ?? makeInitialBasicInfo(profile)
   )
-  const [showLimitModal, setShowLimitModal] = React.useState(false)
-  const [usage, setUsage] = React.useState(() => getUsage())
-
   const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
   const totalSteps = steps.length + 2
 
@@ -49,12 +44,6 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 0))
 
   const handleSubmit = () => {
-    const current = getUsage()
-    if (!current.isUnlimited && current.count >= current.limit) {
-      setShowLimitModal(true)
-      return
-    }
-
     const content = buildContent(basicInfo.doc_type, answers, { tax_type: basicInfo.tax_type ?? 'exclusive' })
     const companyName =
       profile?.business_name && basicInfo.company_name === profile.business_name
@@ -76,11 +65,6 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
       },
       _basicInfo: basicInfo,
     })
-  }
-
-  const handleLimitModalClose = () => {
-    setShowLimitModal(false)
-    setUsage(getUsage())
   }
 
   const renderStep = () => {
@@ -171,26 +155,10 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* 使用状況バッジ */}
-      <div className="flex justify-end mb-3">
-        {usage.isUnlimited ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 border border-accent/30 text-accent text-xs font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-            スタンダードプラン
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-navy-700 border border-navy-600 text-gray-400 text-xs font-medium">
-            今月 {usage.count}/{usage.limit} 回使用
-          </span>
-        )}
-      </div>
-
       <WizardProgress currentStep={currentStep} totalSteps={totalSteps} />
       <div className="bg-navy-800 rounded-2xl p-6 sm:p-8 border border-navy-700 transition-all duration-300">
         {renderStep()}
       </div>
-
-      <UsageLimitModal isOpen={showLimitModal} onClose={handleLimitModalClose} />
     </div>
   )
 }
