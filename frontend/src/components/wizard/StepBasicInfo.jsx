@@ -50,7 +50,7 @@ export default function StepBasicInfo({ data, onChange, onNext, profile }) {
       </div>
 
       <div>
-        <label className={labelClass}>金額（任意）</label>
+        <label className={labelClass}>{data.doc_type === 'invoice' ? '請求金額（任意）' : '金額（任意）'}</label>
         <div className="relative">
           <input
             type="text"

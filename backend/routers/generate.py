@@ -46,7 +46,7 @@ class EmailRequest(BaseModel):
 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
-    if req.doc_type not in ["estimate"]:
+    if req.doc_type not in ["estimate", "invoice"]:
         raise HTTPException(status_code=400, detail="Invalid doc_type")
     if not req.client_name.strip():
         raise HTTPException(status_code=400, detail="顧客名を入力してください")

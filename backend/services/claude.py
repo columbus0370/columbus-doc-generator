@@ -95,8 +95,52 @@ _USER_PROMPT_ESTIMATE = """以下の情報から「御見積書」HTMLを生成�
 金額目安: {amount}円
 備考: {notes}"""
 
+_INVOICE_SYSTEM = f"""あなたは日本語の業務文書HTMLを生成するアシスタントです。
+ユーザーの情報から「御請求書」の完全なHTMLを生成してください。
+
+## 共通スタイル（必ず <head> に含めること）
+{_BASE_STYLE}
+
+## 請求書の構成
+1. ヘッダー: 左=会社名ブロック（#1a3a5c背景・白文字）、右=「御 請 求 書」（20px bold・letter-spacing:4px）＋発行日・請求番号（INV-{{YYYYMMDD}}-001形式）。ヘッダー左ブロックの最上部に `<div class="doc-logo-area"></div>` を空で配置すること。
+2. 区切り線（.divider）
+3. 2カラム: 左=宛先（会社名・担当者）、右=発行者（会社名・住所・TEL・担当者。発行者情報にインボイス登録番号がある場合はここに記載）
+4. 御請求金額ボックス: 背景#f0f4f9・border #1a3a5c、左=件名と対象期間（入力があれば）、右=合計金額（税込・20px bold）
+5. 明細テーブル: 必ず以下の colgroup で列幅を固定すること（table-layout:fixed 前提）
+   <colgroup><col style="width:20%"><col style="width:32%"><col style="width:8%"><col style="width:8%"><col style="width:16%"><col style="width:16%"></colgroup>
+   列ヘッダー(th): 品名 / 作業内容・仕様 / 数量 / 単位 / 単価 / 金額
+   - 数量・単位・単価・金額の td は class="num" を付けること（右寄せ・折り返し禁止）
+6. 合計欄: 必ず以下の構造で生成すること（6列テーブルの colspan="5" + 金額1列）
+   <tr class="subtotal-row"><td colspan="5" class="right">小計</td><td class="num">¥XX,XXX</td></tr>
+   <tr class="subtotal-row"><td colspan="5" class="right">消費税（10%）</td><td class="num">¥X,XXX</td></tr>
+   <tr class="total-row"><td colspan="5" class="right">合計金額（税込）</td><td class="num">¥XX,XXX</td></tr>
+7. 備考欄（h2）: 以下を必ず含める
+   - お支払期限（入力値を反映。例「お支払期限：請求日より30日以内」。未指定の場合は「お支払期限：請求日より30日以内」をデフォルトとする）
+   - 対象期間（入力値があれば「対象期間：〇〇」として記載）
+   - 「ご不明な点がございましたらお気軽にご連絡ください」
+8. 振込先セクション（h2「お振込先」）: 発行者情報に振込先がある場合のみ追加。銀行名・支店名・口座種別・口座番号・口座名義を記載
+
+## 出力ルール
+- <!DOCTYPE html> から </html> まで完全な1ファイルのHTML
+- 外部CSSライブラリ不可。JSは不要（静的HTML）
+- コードブロック記法（```）不要。HTMLをそのまま出力
+- 業務内容から明細行を推定し、合計が入力金額に近くなるよう構成すること
+- 発行者情報に「適格請求書発行事業者登録番号：T...」が含まれる場合は発行者欄に記載すること
+- 発行者情報に「振込先：...」が含まれる場合は備考欄の下に振込先セクションを追加すること
+{_SECURITY_CONSTRAINT}"""
+
+_USER_PROMPT_INVOICE = """以下の情報から「御請求書」HTMLを生成してください。
+
+会社名（発行者）: {company_name}
+顧客名（宛先）: {client_name}
+発行日: {today}
+業務内容・件名: {content}
+請求金額目安: {amount}円
+備考: {notes}"""
+
 TITLES = {
     "estimate": "見積書",
+    "invoice": "請求書",
 }
 
 
@@ -128,18 +172,31 @@ def generate_document(
     amount: str,
     notes: str,
 ) -> dict:
-    if doc_type != "estimate":
+    if doc_type not in ("estimate", "invoice"):
         raise ValueError(f"Unknown doc_type: {doc_type}")
 
     today = date.today().strftime("%Y年%m月%d日")
-    user_prompt = _USER_PROMPT_ESTIMATE.format(
-        client_name=client_name,
-        company_name=company_name or "（自社名未入力）",
-        content=content,
-        amount=amount or "未定",
-        notes=notes or "なし",
-        today=today,
-    )
+
+    if doc_type == "invoice":
+        system_prompt = _INVOICE_SYSTEM
+        user_prompt = _USER_PROMPT_INVOICE.format(
+            client_name=client_name,
+            company_name=company_name or "（自社名未入力）",
+            content=content,
+            amount=amount or "未定",
+            notes=notes or "なし",
+            today=today,
+        )
+    else:
+        system_prompt = _ESTIMATE_SYSTEM
+        user_prompt = _USER_PROMPT_ESTIMATE.format(
+            client_name=client_name,
+            company_name=company_name or "（自社名未入力）",
+            content=content,
+            amount=amount or "未定",
+            notes=notes or "なし",
+            today=today,
+        )
 
     message = _get_client().messages.create(
         model="claude-opus-4-7",
@@ -147,7 +204,7 @@ def generate_document(
         system=[
             {
                 "type": "text",
-                "text": _ESTIMATE_SYSTEM,
+                "text": system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }
         ],

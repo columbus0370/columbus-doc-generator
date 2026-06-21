@@ -29,6 +29,21 @@ function getWorkTypeLabel(value) {
   return opt?.label || value || ''
 }
 
+const DOC_TYPE_CARDS = [
+  {
+    value: 'estimate',
+    label: '見積書',
+    desc: '案件・プロジェクトの費用を見積もる',
+    iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  },
+  {
+    value: 'invoice',
+    label: '請求書',
+    desc: '完了した作業の代金を請求する',
+    iconPath: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+  },
+]
+
 export default function App() {
   const [result, setResult] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
@@ -39,6 +54,7 @@ export default function App() {
   const [showEmail, setShowEmail] = React.useState(false)
   const [initialData, setInitialData] = React.useState(null)
   const [history, setHistory] = React.useState([])
+  const [selectedDocType, setSelectedDocType] = React.useState(null)
 
   const { profile, saveProfile } = useBusinessProfile()
   const { getHistory, saveEstimate, deleteEstimate } = useEstimateHistory()
@@ -73,6 +89,7 @@ export default function App() {
         ...data,
         generated_text: enrichedHtml,
         client_name: formData.client_name,
+        doc_type: formData.doc_type,
         _wizard: wizard,
         work_type_label: workTypeLabel,
         total_amount: totalAmount,
@@ -81,6 +98,7 @@ export default function App() {
 
       saveEstimate({
         client_name: formData.client_name,
+        doc_type: formData.doc_type,
         work_type: wizard.work_type || '',
         work_type_label: workTypeLabel,
         work_detail: wizard.work_detail || '',
@@ -89,7 +107,7 @@ export default function App() {
         total_amount: totalAmount,
         html: enrichedHtml,
         basicInfo: formData._basicInfo,
-        answers: [wizard.work_type, wizard.work_detail, wizard.line_items, wizard.conditions],
+        answers: formData._wizard_answers || [],
       })
     } catch (e) {
       if (e instanceof TypeError && e.message === 'Failed to fetch') {
@@ -106,6 +124,7 @@ export default function App() {
     setResult(null)
     setError('')
     setInitialData(null)
+    setSelectedDocType(null)
     setWizardKey((k) => k + 1)
   }
 
@@ -113,17 +132,15 @@ export default function App() {
     saveProfile(data)
   }
 
-  const handleHtmlChange = (newHtml) => {
-    setResult((prev) => ({ ...prev, generated_text: newHtml }))
-  }
-
   const handleReuseEstimate = (item) => {
     setShowHistory(false)
     setResult(null)
     setError('')
+    const docType = item.doc_type || item.basicInfo?.doc_type || 'estimate'
+    setSelectedDocType(docType)
     setInitialData({
       basicInfo: item.basicInfo || {
-        doc_type: 'estimate',
+        doc_type: docType,
         client_name: item.client_name || '',
         company_name: profile?.business_name || '',
         amount: '',
@@ -150,12 +167,11 @@ export default function App() {
               </svg>
             </div>
             <h1 className="text-xl font-bold text-white">
-              Columbus AI <span className="text-accent">見積書ジェネレーター</span>
+              Columbus AI <span className="text-accent">書類ジェネレーター</span>
             </h1>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 履歴ボタン */}
             <button
               type="button"
               onClick={() => setShowHistory(true)}
@@ -167,7 +183,6 @@ export default function App() {
               <span className="hidden sm:inline">履歴</span>
             </button>
 
-            {/* 事業者情報ボタン */}
             <button
               type="button"
               onClick={() => setShowProfile(true)}
@@ -230,16 +245,60 @@ export default function App() {
               />
             </div>
           </div>
-        ) : (
+        ) : !selectedDocType ? (
+          /* 書類種別選択 */
           <div className="flex flex-col items-center">
-            <div className="w-full max-w-2xl mb-8 text-center">
-              <h2 className="text-2xl font-bold text-white">見積書を作成する</h2>
+            <div className="w-full max-w-2xl mb-10 text-center">
+              <h2 className="text-2xl font-bold text-white">どの書類を作成しますか？</h2>
               <p className="text-gray-400 mt-2 text-sm">
-                ステップに沿って回答するだけで、プロ品質の見積書をAIが生成します
+                書類の種類を選ぶと、ステップに沿って質問に答えるだけでAIが生成します
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+              {DOC_TYPE_CARDS.map(({ value, label, desc, iconPath }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSelectedDocType(value)}
+                  className="bg-navy-800 border border-navy-700 hover:border-accent hover:bg-navy-700/50 rounded-2xl p-6 text-left transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center mb-4 group-hover:bg-accent/25 transition-colors">
+                    <svg className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={iconPath} />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1">{label}</h3>
+                  <p className="text-sm text-gray-400">{desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* ウィザード */
+          <div className="flex flex-col items-center">
+            <div className="w-full max-w-2xl mb-8">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocType(null)}
+                  className="text-gray-500 hover:text-gray-300 transition-colors"
+                  aria-label="書類種別選択に戻る"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="text-2xl font-bold text-white">
+                  {DOC_TYPE_CARDS.find((c) => c.value === selectedDocType)?.label}を作成する
+                </h2>
+              </div>
+              <p className="text-gray-400 text-sm pl-8">
+                ステップに沿って回答するだけで、プロ品質の書類をAIが生成します
               </p>
             </div>
             <WizardContainer
               key={wizardKey}
+              docType={selectedDocType}
               onGenerate={handleGenerate}
               loading={loading}
               error={error}
@@ -251,7 +310,7 @@ export default function App() {
       </main>
 
       <footer className="text-center py-6 text-gray-600 text-sm">
-        Columbus AI 見積書ジェネレーター — Powered by Claude API
+        Columbus AI 書類ジェネレーター — Powered by Claude API
       </footer>
 
       {/* 事業者情報モーダル */}
@@ -271,7 +330,7 @@ export default function App() {
           companyName={profile?.business_name || ''}
           workTypeLabel={result.work_type_label || ''}
           totalAmount={result.total_amount ? `${result.total_amount.toLocaleString()}` : ''}
-          deadline={result._wizard?.conditions?.deadline || ''}
+          deadline={result._wizard?.conditions?.deadline || result._wizard?.conditions?.payment_due || ''}
           onClose={() => setShowEmail(false)}
         />
       )}
@@ -284,7 +343,7 @@ export default function App() {
         >
           <div className="w-full max-w-md bg-navy-800 border-l border-navy-700 h-full overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-navy-700 flex-shrink-0">
-              <h2 className="text-base font-bold text-white">見積書の履歴</h2>
+              <h2 className="text-base font-bold text-white">書類の履歴</h2>
               <button
                 type="button"
                 onClick={() => setShowHistory(false)}
@@ -300,48 +359,57 @@ export default function App() {
               {history.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 text-sm">
                   <p>履歴はまだありません</p>
-                  <p className="mt-1 text-xs">見積書を生成すると自動保存されます</p>
+                  <p className="mt-1 text-xs">書類を生成すると自動保存されます</p>
                 </div>
               ) : (
-                history.map((item) => (
-                  <div key={item.id} className="bg-navy-900/60 border border-navy-700 rounded-xl p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          {item.client_name || '（顧客名なし）'}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{item.work_type_label || item.work_type || '—'}</p>
+                history.map((item) => {
+                  const docType = item.doc_type || item.basicInfo?.doc_type || 'estimate'
+                  const docLabel = docType === 'invoice' ? '請求書' : '見積書'
+                  return (
+                    <div key={item.id} className="bg-navy-900/60 border border-navy-700 rounded-xl p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {item.client_name || '（顧客名なし）'}
+                            </p>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-navy-700 text-gray-400 flex-shrink-0">
+                              {docLabel}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-0.5">{item.work_type_label || item.work_type || '—'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHistory(item.id)}
+                          className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                          title="削除"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
+
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                          {item.total_amount > 0
+                            ? `¥${item.total_amount.toLocaleString()}`
+                            : '金額未定'}
+                        </span>
+                        <span>{formatJpDate(item.created_at)}</span>
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => handleDeleteHistory(item.id)}
-                        className="text-gray-600 hover:text-red-400 transition-colors p-1 flex-shrink-0"
-                        title="削除"
+                        onClick={() => handleReuseEstimate(item)}
+                        className="w-full py-2 rounded-lg border border-navy-600 text-gray-300 hover:text-white hover:border-accent hover:bg-accent/10 transition-all text-xs font-medium"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        この{docLabel}を再利用
                       </button>
                     </div>
-
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>
-                        {item.total_amount > 0
-                          ? `¥${item.total_amount.toLocaleString()}`
-                          : '金額未定'}
-                      </span>
-                      <span>{formatJpDate(item.created_at)}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleReuseEstimate(item)}
-                      className="w-full py-2 rounded-lg border border-navy-600 text-gray-300 hover:text-white hover:border-accent hover:bg-accent/10 transition-all text-xs font-medium"
-                    >
-                      この見積書を再利用
-                    </button>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>

@@ -8,18 +8,18 @@ import StepLineItems from './StepLineItems'
 import StepTextInput from './StepTextInput'
 import StepConfirm from './StepConfirm'
 
-const makeInitialBasicInfo = (profile) => ({
-  doc_type: 'estimate',
+const makeInitialBasicInfo = (profile, docType) => ({
+  doc_type: docType || 'estimate',
   client_name: '',
   company_name: profile?.business_name ?? '',
   amount: '',
   tax_type: 'exclusive',
 })
 
-export default function WizardContainer({ onGenerate, loading, error, profile, initialData }) {
+export default function WizardContainer({ onGenerate, loading, error, profile, initialData, docType }) {
   const [currentStep, setCurrentStep] = React.useState(0)
   const [basicInfo, setBasicInfo] = React.useState(
-    () => initialData?.basicInfo ?? makeInitialBasicInfo(profile)
+    () => initialData?.basicInfo ?? makeInitialBasicInfo(profile, docType)
   )
   const steps = WIZARD_STEPS[basicInfo.doc_type] ?? []
   const totalSteps = steps.length + 2
@@ -50,6 +50,11 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
         ? formatProfileForPrompt(profile)
         : basicInfo.company_name
 
+    const _wizard = {}
+    steps.forEach((step, idx) => {
+      _wizard[step.key] = answers[idx]
+    })
+
     onGenerate({
       doc_type: basicInfo.doc_type,
       client_name: basicInfo.client_name,
@@ -57,12 +62,8 @@ export default function WizardContainer({ onGenerate, loading, error, profile, i
       content,
       amount: basicInfo.amount,
       notes: '',
-      _wizard: {
-        work_type: answers[0],
-        work_detail: answers[1],
-        line_items: answers[2],
-        conditions: answers[3],
-      },
+      _wizard,
+      _wizard_answers: answers,
       _basicInfo: basicInfo,
     })
   }

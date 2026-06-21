@@ -1,8 +1,52 @@
 export const DOC_TYPES = [
   { value: 'estimate', label: '見積書' },
+  { value: 'invoice', label: '請求書' },
 ]
 
 export const WIZARD_STEPS = {
+  invoice: [
+    {
+      type: 'select',
+      key: 'work_type',
+      label: '業務種別',
+      options: [
+        { value: 'web', label: 'Webサイト制作' },
+        { value: 'system', label: 'システム開発' },
+        { value: 'maintenance', label: '保守・運用' },
+        { value: 'design', label: 'デザイン（LP・バナー等）' },
+        { value: 'other', label: 'その他' },
+      ],
+    },
+    {
+      type: 'text',
+      key: 'work_detail',
+      label: '作業内容の概要',
+      placeholder: '例：コーポレートサイト5ページ制作・納品済み。WordPress導入、レスポンシブ対応含む。',
+    },
+    {
+      type: 'line_items',
+      key: 'line_items',
+      label: '明細入力',
+    },
+    {
+      type: 'text',
+      key: 'service_period',
+      label: '対象期間（任意）',
+      placeholder: '例：2026年5月1日〜2026年5月31日',
+    },
+    {
+      type: 'select_multi',
+      key: 'conditions',
+      label: '支払条件',
+      fields: [
+        {
+          key: 'payment_due',
+          label: '支払期限',
+          options: ['請求日より30日以内', '翌月末日まで', '当月末日まで', '即時払い'],
+        },
+      ],
+    },
+  ],
   estimate: [
     {
       type: 'select',
@@ -106,43 +150,57 @@ export const PRICE_GUIDE = {
 
 /**
  * ウィザードの選択結果を content 文字列に変換する
- * @param {'estimate'} docType
+ * @param {'estimate'|'invoice'} docType
  * @param {Array} answers
  * @returns {string}
  */
 export function buildContent(docType, answers, options = {}) {
   const { tax_type = 'exclusive' } = options
+
+  const taxInstruction = tax_type === 'inclusive'
+    ? '税区分：税込入力（明細の単価・金額はすべて税込金額です。消費税は合計金額÷1.1×0.1で逆算し端数切り捨てで内税表示してください。合計欄の「消費税（10%）」行は「消費税（10%内税）」と表記してください）'
+    : '税区分：税抜入力（明細の単価・金額は税抜金額です。消費税は各行ではなく小計合計に10%を一括で掛けて端数切り捨てで計算してください）'
+
+  const buildLineItemsSection = (lineItems) => {
+    if (lineItems === '未定') return '【明細】未定（業務内容から適切な明細を補完してください）'
+    if (!Array.isArray(lineItems) || lineItems.length === 0) return ''
+    const validRows = lineItems.filter((r) => r.name.trim())
+    if (validRows.length === 0) return ''
+    return (
+      '【明細】\n' +
+      validRows
+        .map((r) => {
+          const price = r.price ? `単価${Number(r.price).toLocaleString()}円` : ''
+          return `・${r.name}${r.desc ? `（${r.desc}）` : ''}: ${r.qty}${r.unit}${price ? `、${price}` : ''}`
+        })
+        .join('\n')
+    )
+  }
+
   switch (docType) {
+    case 'invoice': {
+      const [work_type, work_detail, lineItems, service_period, conditions] = answers
+      const workTypeOption = WIZARD_STEPS.invoice[0].options.find((o) => o.value === work_type)
+      const workTypeLabel = workTypeOption?.label || work_type || '未指定'
+      return [
+        `業務種別：${workTypeLabel}`,
+        work_detail ? `作業内容：${work_detail}` : '',
+        buildLineItemsSection(lineItems),
+        taxInstruction,
+        service_period ? `対象期間：${service_period}` : '',
+        conditions?.payment_due ? `支払期限：${conditions.payment_due}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    }
     case 'estimate': {
       const [work_type, work_detail, lineItems, conditions] = answers
       const workTypeOption = WIZARD_STEPS.estimate[0].options.find((o) => o.value === work_type)
       const workTypeLabel = workTypeOption?.label || work_type || '未指定'
-
-      let lineItemsSection = ''
-      if (lineItems === '未定') {
-        lineItemsSection = '【明細】未定（業務内容から適切な明細を補完してください）'
-      } else if (Array.isArray(lineItems) && lineItems.length > 0) {
-        const validRows = lineItems.filter((r) => r.name.trim())
-        if (validRows.length > 0) {
-          lineItemsSection =
-            '【明細】\n' +
-            validRows
-              .map((r) => {
-                const price = r.price ? `単価${Number(r.price).toLocaleString()}円` : ''
-                return `・${r.name}${r.desc ? `（${r.desc}）` : ''}: ${r.qty}${r.unit}${price ? `、${price}` : ''}`
-              })
-              .join('\n')
-        }
-      }
-
-      const taxInstruction = tax_type === 'inclusive'
-        ? '税区分：税込入力（明細の単価・金額はすべて税込金額です。消費税は合計金額÷1.1×0.1で逆算し端数切り捨てで内税表示してください。合計欄の「消費税（10%）」行は「消費税（10%内税）」と表記してください）'
-        : '税区分：税抜入力（明細の単価・金額は税抜金額です。消費税は各行ではなく小計合計に10%を一括で掛けて端数切り捨てで計算してください）'
-
       return [
         `業務種別：${workTypeLabel}`,
         work_detail ? `作業内容：${work_detail}` : '',
-        lineItemsSection,
+        buildLineItemsSection(lineItems),
         taxInstruction,
         conditions?.deadline ? `納期：${conditions.deadline}` : '',
         conditions?.payment ? `支払条件：${conditions.payment}` : '',
