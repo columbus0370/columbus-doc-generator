@@ -167,3 +167,14 @@ npm run dev
 ## 開発者
 
 Columbus | AI × 業務改善ツール開発
+
+
+---
+
+## About the author
+
+Built by **Columbus | AI Chatbot Engineer** — I build and audit AI chatbots for small businesses.
+
+- Portfolio & services: [Link hub](https://scratched-monarch-8ee.notion.site/Columbus-AI-Chatbot-Engineer-421f830173258138ae48dadc6fad1dc4)
+- Articles: [dev.to](https://dev.to/columbus0370)
+- Threads / Instagram: @columbus.builds.ai
